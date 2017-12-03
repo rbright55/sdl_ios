@@ -10,7 +10,7 @@
 
 #import "SDLTouchType.h"
 
-@protocol SDLHapticHitTester;
+@protocol SDLFocusableItemHitTester;
 @protocol SDLTouchManagerDelegate;
 
 @class SDLTouch;
@@ -50,15 +50,6 @@ typedef void(^SDLTouchEventHandler)(SDLTouch *touch, SDLTouchType type);
 
 /**
  *  @abstract
- *      Time (in seconds) between movement events to register panning or pinching 
- *      callbacks.
- *  @remark
- *      Default is 0.05 seconds.
- */
-@property (nonatomic, assign) CGFloat movementTimeThreshold;
-
-/**
- *  @abstract
  *      Boolean denoting whether or not the touch manager should deliver touch event
  *      callbacks.
  *  @remark
@@ -82,7 +73,10 @@ typedef void(^SDLTouchEventHandler)(SDLTouch *touch, SDLTouchType type);
  @param hitTester The hit tester to be used to correlate a point with a view
  @return The initialized touch manager
  */
-- (instancetype)initWithHitTester:(nullable id<SDLHapticHitTester>)hitTester;
+- (instancetype)initWithHitTester:(nullable id<SDLFocusableItemHitTester>)hitTester;
+
+- (void)notifyNewFrameDraw; // KSHALA added to tell the touch manager that there will be a new frame soon
+
 
 @end
 
