@@ -82,8 +82,8 @@ static NSUInteger const MaximumNumberOfTouches = 2;
  */
 @property (nonatomic, weak, nullable) id<SDLFocusableItemHitTester> hitTester;
 
-@property (nonatomic, strong) SDLTouch *lastStoredTouch;
-@property (nonatomic, strong) SDLTouch *lastNotifiedTouch;
+@property (nonatomic) CGPoint lastStoredTouchLocation;
+@property (nonatomic) CGPoint lastNotifiedTouchLocation;
 
 @end
 
@@ -107,17 +107,17 @@ static NSUInteger const MaximumNumberOfTouches = 2;
 
 - (void)notifyNewFrameDraw {
     if (self.performingTouchType == SDLPerformingTouchTypePanningTouch) {
-        if (CGPointEqualToPoint(self.lastStoredTouch.location, self.lastNotifiedTouch.location)) {
+        if (CGPointEqualToPoint(self.lastStoredTouchLocation, self.lastNotifiedTouchLocation)) {
             return;
         }
     
         if ([self.touchEventDelegate respondsToSelector:@selector(touchManager:didReceivePanningFromPoint:toPoint:)]) {
             [self.touchEventDelegate touchManager:self
-                       didReceivePanningFromPoint:self.lastNotifiedTouch.location
-                                          toPoint:self.lastStoredTouch.location];
+                       didReceivePanningFromPoint:self.lastNotifiedTouchLocation
+                                          toPoint:self.lastStoredTouchLocation];
         }
         
-        self.lastNotifiedTouch = self.lastStoredTouch;
+        self.lastNotifiedTouchLocation = self.lastStoredTouchLocation;
     } else if (self.performingTouchType == SDLPerformingTouchTypeMultiTouch) {
         if (self.previousPinchDistance == self.currentPinchGesture.distance) {
             return;
@@ -221,8 +221,8 @@ static NSUInteger const MaximumNumberOfTouches = 2;
             }
         } break;
         case SDLPerformingTouchTypeSingleTouch: {
-            self.lastNotifiedTouch = touch; // kshala storing the touch object to notify only on redraw
-            self.lastStoredTouch = touch;
+            self.lastNotifiedTouchLocation = touch.location; // kshala storing the touch object to notify only on redraw
+            self.lastStoredTouchLocation = touch.location;
             
             _performingTouchType = SDLPerformingTouchTypePanningTouch;
             if ([self.touchEventDelegate respondsToSelector:@selector(touchManager:panningDidStartInView:atPoint:)]) {
@@ -231,7 +231,7 @@ static NSUInteger const MaximumNumberOfTouches = 2;
             }
         } break;
         case SDLPerformingTouchTypePanningTouch: {
-            self.lastStoredTouch = touch;
+            self.lastStoredTouchLocation = touch.location;
         } break;
         case SDLPerformingTouchTypeNone: break;
     }
