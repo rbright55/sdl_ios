@@ -80,26 +80,33 @@ NSTimeInterval const StreamThreadWaitSecs = 1.0;
 }
 
 - (void)stop {
-    // This method must be called on the main thread
-    NSAssert([NSThread isMainThread], @"stop must be called on the main thread");
-    
-    if (self.isDataSession) {
-        [self.ioStreamThread cancel];
-
-        long lWait = dispatch_semaphore_wait(self.canceledSemaphore, dispatch_time(DISPATCH_TIME_NOW, StreamThreadWaitSecs * NSEC_PER_SEC));
-        if (lWait == 0) {
-            SDLLogW(@"Stream thread cancelled");
+    dispatch_block_t block = ^{
+        if (self.isDataSession) {
+            [self.ioStreamThread cancel];
+            
+            long lWait = dispatch_semaphore_wait(self.canceledSemaphore, dispatch_time(DISPATCH_TIME_NOW, StreamThreadWaitSecs * NSEC_PER_SEC));
+            if (lWait == 0) {
+                SDLLogW(@"Stream thread cancelled");
+            } else {
+                SDLLogE(@"Failed to cancel stream thread");
+            }
+            self.ioStreamThread = nil;
+            self.isDataSession = NO;
         } else {
-            SDLLogE(@"Failed to cancel stream thread");
+            // Stop control session
+            [self stopStream:self.easession.outputStream];
+            [self stopStream:self.easession.inputStream];
         }
-        self.ioStreamThread = nil;
-        self.isDataSession = NO;
+        self.easession = nil;
+    };
+    
+    if (![NSThread isMainThread]) {
+        // we are not in main thread so dispatch sync to the main queue
+        dispatch_sync(dispatch_get_main_queue(), block);
     } else {
-        // Stop control session
-        [self stopStream:self.easession.outputStream];
-        [self stopStream:self.easession.inputStream];
+        // we are in main thread so direct call the stop code;
+        block();
     }
-    self.easession = nil;
 }
 
 - (BOOL)isStopped {
