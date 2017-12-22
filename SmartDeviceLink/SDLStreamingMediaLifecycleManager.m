@@ -145,15 +145,27 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     _videoStreamStateMachine = [[SDLStateMachine alloc] initWithTarget:self initialState:SDLVideoStreamStateStopped states:[self.class sdl_videoStreamStateTransitionDictionary]];
     _audioStreamStateMachine = [[SDLStateMachine alloc] initWithTarget:self initialState:SDLAudioStreamStateStopped states:[self.class sdl_audioStreamingStateTransitionDictionary]];
 
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(sdl_didReceiveRegisterAppInterfaceResponse:) name:SDLDidReceiveRegisterAppInterfaceResponse object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(sdl_hmiLevelDidChange:) name:SDLDidChangeHMIStatusNotification object:nil];
+    NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
+    
+    [notificationCenter addObserver:self selector:@selector(sdl_didReceiveRegisterAppInterfaceResponse:) name:SDLDidReceiveRegisterAppInterfaceResponse object:nil];
+    [notificationCenter addObserver:self selector:@selector(sdl_hmiLevelDidChange:) name:SDLDidChangeHMIStatusNotification object:nil];
 
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(sdl_appStateDidUpdate:) name:UIApplicationDidBecomeActiveNotification object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(sdl_appStateDidUpdate:) name:UIApplicationWillResignActiveNotification object:nil];
+    [notificationCenter addObserver:self selector:@selector(sdl_appStateDidUpdate:) name:UIApplicationDidBecomeActiveNotification object:nil];
+    [notificationCenter addObserver:self selector:@selector(sdl_appStateDidUpdate:) name:UIApplicationWillResignActiveNotification object:nil];
 
     _lastPresentationTimestamp = kCMTimeInvalid;
 
     return self;
+}
+
+- (void)dealloc {
+    NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
+    
+    [notificationCenter removeObserver:self];
+    
+    
+    [self.audioStreamStateMachine transitionToState:SDLAudioStreamStateStopped];
+    [self.videoStreamStateMachine transitionToState:SDLVideoStreamStateStopped];
 }
 
 - (void)startWithProtocol:(SDLAbstractProtocol *)protocol {
@@ -395,7 +407,10 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
 
 - (void)didEnterStateVideoStreamShuttingDown {
     SDLLogD(@"Video stream shutting down");
+
     [self.protocol endServiceWithType:SDLServiceTypeVideo];
+    
+    [self.videoStreamStateMachine transitionToState:SDLVideoStreamStateStopped];
 }
 
 #pragma mark Audio
@@ -437,6 +452,8 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
 - (void)didEnterStateAudioStreamShuttingDown {
     SDLLogD(@"Audio stream shutting down");
     [self.protocol endServiceWithType:SDLServiceTypeAudio];
+    
+    [self.audioStreamStateMachine transitionToState:SDLAudioStreamStateStopped];
 }
 
 #pragma mark - SDLProtocolListener
@@ -540,12 +557,12 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
 
 - (void)handleProtocolEndServiceACKMessage:(SDLProtocolMessage *)endServiceACK {
     SDLLogD(@"%@ service ended", (endServiceACK.header.serviceType == SDLServiceTypeVideo ? @"Video" : @"Audio"));
-    [self sdl_transitionToStoppedState:endServiceACK.header.serviceType];
+    //[self sdl_transitionToStoppedState:endServiceACK.header.serviceType];
 }
 
 - (void)handleProtocolEndServiceNAKMessage:(SDLProtocolMessage *)endServiceNAK {
     SDLLogW(@"%@ service ended with end service NAK", (endServiceNAK.header.serviceType == SDLServiceTypeVideo ? @"Video" : @"Audio"));
-    [self sdl_transitionToStoppedState:endServiceNAK.header.serviceType];
+    //[self sdl_transitionToStoppedState:endServiceNAK.header.serviceType];
 }
 
 #pragma mark - SDLVideoEncoderDelegate
@@ -703,6 +720,11 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     SDLLogV(@"Attempting to send background frames");
     if (!self.backgroundingPixelBuffer) {
         SDLLogW(@"No background pixel buffer, unable to send background frames");
+        return;
+    }
+    
+    if (!self.videoEncoder) {
+        SDLLogW(@"No video encoder to encode frames, unable to send background frames");
         return;
     }
 
