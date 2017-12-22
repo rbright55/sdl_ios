@@ -194,6 +194,10 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
 }
 
 - (BOOL)sendVideoData:(CVImageBufferRef)imageBuffer presentationTimestamp:(CMTime)presentationTimestamp {
+    if (!imageBuffer) {
+        SDLLogW(@"Attempt to send video data without image buffer");
+        return NO;
+    }
     if (!self.isVideoConnected) {
         SDLLogW(@"Attempted to send video data, but not connected");
         return NO;
