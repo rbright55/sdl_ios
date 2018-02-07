@@ -159,9 +159,7 @@ static NSDictionary<NSString *, id>* _defaultVideoEncoderSettings;
     }
     
     CVPixelBufferRef pixelBuffer;
-    CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault,
-                                       self.pixelBufferPool,
-                                       &pixelBuffer);
+    CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, self.pixelBufferPool, &pixelBuffer);
 
     return pixelBuffer;
 }

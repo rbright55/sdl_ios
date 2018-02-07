@@ -97,6 +97,8 @@ NS_ASSUME_NONNULL_BEGIN
  */
 @property (assign, nonatomic) SDLStreamingEncryptionFlag requestedEncryptionType;
 
+@property (copy, nonatomic) NSString *backgroundingString;
+
 - (instancetype)init NS_UNAVAILABLE;
 
 /**

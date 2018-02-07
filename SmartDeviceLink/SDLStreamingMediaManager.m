@@ -115,9 +115,17 @@ NS_ASSUME_NONNULL_BEGIN
     return self.lifecycleManager.requestedEncryptionType;
 }
 
+- (NSString *)backgroundingString {
+    return self.lifecycleManager.backgroundString;
+}
+
 #pragma mark - Setters
 - (void)setRequestedEncryptionType:(SDLStreamingEncryptionFlag)requestedEncryptionType {
     self.lifecycleManager.requestedEncryptionType = requestedEncryptionType;
+}
+
+- (void)setBackgroundingString:(NSString *)backgroundingString {
+    self.lifecycleManager.backgroundString = backgroundingString;
 }
 
 @end

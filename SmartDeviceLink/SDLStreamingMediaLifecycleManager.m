@@ -807,6 +807,59 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     }
 }
 
++ (UIImage*)sdl_imageWithText:(NSString*)text size:(CGSize)size {
+    CGRect frame = CGRectMake(0, 0, size.width, size.height);
+    UIGraphicsBeginImageContextWithOptions(frame.size, NO, 1.0);
+    CGContextRef context = UIGraphicsGetCurrentContext();
+
+    CGContextSetFillColorWithColor(context, [UIColor blackColor].CGColor);
+    CGContextFillRect(context, frame);
+    CGContextSaveGState(context);
+
+    NSMutableParagraphStyle* textStyle = NSMutableParagraphStyle.defaultParagraphStyle.mutableCopy;
+    textStyle.alignment = NSTextAlignmentCenter;
+
+    NSDictionary* textAttributes = @{
+                                     NSFontAttributeName: [self sdl_fontFittingSize:frame.size forText:text],
+                                     NSForegroundColorAttributeName: [UIColor whiteColor],
+                                     NSParagraphStyleAttributeName: textStyle
+                                     };
+    CGRect textFrame = [text boundingRectWithSize:size
+                                          options:NSStringDrawingUsesLineFragmentOrigin
+                                       attributes:textAttributes
+                                          context:nil];
+    CGRect textInset = CGRectMake(0,
+                                  (frame.size.height - CGRectGetHeight(textFrame)) / 2.0,
+                                  frame.size.width,
+                                  frame.size.height);
+
+    [text drawInRect:textInset
+      withAttributes:textAttributes];
+
+    CGContextRestoreGState(context);
+    UIImage* image = UIGraphicsGetImageFromCurrentImageContext();
+    CGContextRelease(context);
+
+    return image;
+}
+
++ (UIFont*)sdl_fontFittingSize:(CGSize)size forText:(NSString*)text {
+    CGFloat fontSize = 100;
+    while (fontSize > 0.0)
+    {
+        CGSize size = [text boundingRectWithSize:CGSizeMake(size.width, CGFLOAT_MAX)
+                                         options:NSStringDrawingUsesLineFragmentOrigin
+                                      attributes:@{NSFontAttributeName : [UIFont boldSystemFontOfSize:fontSize]}
+                                         context:nil].size;
+
+        if (size.height <= size.height) break;
+
+        fontSize -= 10.0;
+    }
+
+    return [UIFont boldSystemFontOfSize:fontSize];
+}
+
 
 #pragma mark Getters
 
@@ -827,6 +880,21 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     SDLVideoStreamingFormat *h264rtp = [[SDLVideoStreamingFormat alloc] initWithCodec:SDLVideoStreamingCodecH264 protocol:SDLVideoStreamingProtocolRTP];
     
     return @[h264raw, h264rtp];
+}
+
+#pragma mark Setters
+
+- (void)setBackgroundString:(NSString *)backgroundString {
+    _backgroundString = backgroundString;
+
+    CVPixelBufferRef backgroundingPixelBuffer = [self.videoEncoder newPixelBuffer];
+    if (CVPixelBufferAddText(backgroundingPixelBuffer, backgroundString) == NO) {
+        SDLLogE(@"Could not create a backgrounding frame");
+        [self.videoStreamStateMachine transitionToState:SDLVideoStreamStateStopped];
+        return;
+    }
+
+    self.backgroundingPixelBuffer = backgroundingPixelBuffer;
 }
 
 @end

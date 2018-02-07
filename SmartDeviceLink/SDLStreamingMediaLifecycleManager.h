@@ -156,6 +156,8 @@ extern SDLAudioStreamState *const SDLAudioStreamStateShuttingDown;
  */
 @property (assign, nonatomic) SDLStreamingEncryptionFlag requestedEncryptionType;
 
+@property (copy, nonatomic) NSString *backgroundString;
+
 - (instancetype)init NS_UNAVAILABLE;
 
 /**
@@ -204,7 +206,6 @@ extern SDLAudioStreamState *const SDLAudioStreamStateShuttingDown;
  *  @return Whether or not the data was successfully sent.
  */
 - (BOOL)sendAudioData:(NSData *)audioData;
-
 
 @end
 
