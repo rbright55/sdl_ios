@@ -34,6 +34,7 @@ typedef NSString SDLVideoStreamState;
 extern SDLVideoStreamState *const SDLVideoStreamStateStopped;
 extern SDLVideoStreamState *const SDLVideoStreamStateStarting;
 extern SDLVideoStreamState *const SDLVideoStreamStateReady;
+extern SDLVideoStreamState *const SDLVideoStreamStateSuspended;
 extern SDLVideoStreamState *const SDLVideoStreamStateShuttingDown;
 
 typedef NSString SDLAudioStreamState;
@@ -56,8 +57,6 @@ extern SDLAudioStreamState *const SDLAudioStreamStateShuttingDown;
 @property (strong, nonatomic, readonly) SDLVideoStreamState *currentVideoStreamState;
 
 @property (copy, nonatomic, nullable) SDLHMILevel hmiLevel;
-
-@property (assign, nonatomic, readonly, getter=shouldRestartVideoStream) BOOL restartVideoStream;
 
 /**
  *  Touch Manager responsible for providing touch event notifications.
