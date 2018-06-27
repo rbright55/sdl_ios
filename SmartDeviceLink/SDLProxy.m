@@ -27,12 +27,21 @@
 #import "SDLRPCPayload.h"
 #import "SDLRPCResponse.h"
 #import "SDLRegisterAppInterfaceResponse.h"
+
 #import "SDLRequestType.h"
 #import "SDLStreamingMediaManager.h"
 #import "SDLSystemContext.h"
 #import "SDLSystemRequest.h"
 #import "SDLTimer.h"
 #import "SDLVehicleType.h"
+
+// Required imports for the scaling workaround
+#import "SDLDisplayCapabilities.h"
+#import "SDLScreenParams.h"
+#import "SDLImageResolution.h"
+#import "SDLOnTouchEvent.h"
+#import "SDLTouchEvent.h"
+#import "SDLTouchCoord.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -57,10 +66,22 @@ static float DefaultConnectionTimeout = 45.0;
 @property (nonatomic, strong) NSMutableDictionary<SDLVehicleMake *, Class> *securityManagers;
 @property (nonatomic, strong) NSURLSession* urlSession;
 
+
+@property (nonatomic, assign) BOOL scaleWorkaroundEnabled;
+
 @end
 
 
 @implementation SDLProxy
+static CGFloat _defaultHiResScaleFactor = 0.75;
+
++ (CGFloat)defaultHiResScaleFactor {
+    return _defaultHiResScaleFactor;
+}
+
++ (void)setDefaultHiResScaleFactor:(CGFloat)defaultHiResScaleFactor {
+    _defaultHiResScaleFactor = defaultHiResScaleFactor;
+}
 
 #pragma mark - Object lifecycle
 - (instancetype)initWithTransport:(SDLAbstractTransport *)transport protocol:(SDLAbstractProtocol *)protocol delegate:(NSObject<SDLProxyListener> *)theDelegate {
@@ -88,6 +109,8 @@ static float DefaultConnectionTimeout = 45.0;
         configuration.requestCachePolicy = NSURLRequestUseProtocolCachePolicy;
         
         _urlSession = [NSURLSession sessionWithConfiguration:configuration];
+        
+        self.scaleWorkaroundEnabled = NO;
 
     }
 
@@ -274,9 +297,63 @@ static float DefaultConnectionTimeout = 45.0;
     if ([functionName isEqualToString:SDLNameOnAppInterfaceUnregistered] || [functionName isEqualToString:SDLNameUnregisterAppInterface]) {
         [self handleRPCUnregistered:dict];
     }
-
+    
     if ([functionName isEqualToString:@"RegisterAppInterfaceResponse"]) {
+        // WORKAROUND !!! !!!
+        SDLRegisterAppInterfaceResponse *raiResponse = (SDLRegisterAppInterfaceResponse *)newMessage;
+        // modify the screen resolution to be not more than 800 in width
+        SDLImageResolution *resolution = raiResponse.displayCapabilities.screenParams.resolution;
+        int w = resolution.resolutionWidth.intValue;
+        int h = resolution.resolutionHeight.intValue;
+        
+        NSString *m = raiResponse.vehicleType.make;
+        
+        if (([m containsString:@"Ford"] || [m containsString:@"Lincoln"]) && (w > 800 || h > 800)) {
+            self.scaleWorkaroundEnabled = YES;
+            CGFloat scaleFactor = SDLProxy.defaultHiResScaleFactor;
+            if (scaleFactor == 0.0) scaleFactor = 0.75;
+            
+            // WORKAROUND to reduce the resolution
+            resolution.resolutionWidth = @(resolution.resolutionWidth.floatValue * scaleFactor);
+            resolution.resolutionHeight = @(resolution.resolutionHeight.floatValue * scaleFactor);
+            
+            // another workaround because accessing data returns an object copy
+            SDLScreenParams *screenParams = raiResponse.displayCapabilities.screenParams;
+            SDLDisplayCapabilities *displayCapabilities = raiResponse.displayCapabilities;
+            
+            screenParams.resolution = resolution;
+            displayCapabilities.screenParams = screenParams;
+            raiResponse.displayCapabilities = displayCapabilities;
+        } else {
+            self.scaleWorkaroundEnabled = NO;
+        }
+            
         [self handleRegisterAppInterfaceResponse:(SDLRPCResponse *)newMessage];
+    }
+    
+    if ([functionName isEqualToString:@"OnTouchEvent"]) {
+        if (self.scaleWorkaroundEnabled) {
+            SDLOnTouchEvent *touchEvent = (SDLOnTouchEvent *)newMessage;
+            NSMutableArray<SDLTouchEvent *> *event = [NSMutableArray arrayWithCapacity:touchEvent.event.count];
+            
+            CGFloat scaleFactor = SDLProxy.defaultHiResScaleFactor;
+            if (scaleFactor == 0.0) scaleFactor = 0.75;
+            
+            for (SDLTouchEvent *e in touchEvent.event) {
+                NSMutableArray<SDLTouchCoord *> *coords = [[NSMutableArray alloc] initWithCapacity:e.coord.count];
+                for (SDLTouchCoord *coord in e.coord) {
+                    coord.x = @(coord.x.floatValue * scaleFactor);
+                    coord.y = @(coord.y.floatValue * scaleFactor);
+                    [coords addObject:coord];
+                }
+                
+                e.coord = [coords copy];
+                
+                [event addObject:e];
+            }
+            
+            touchEvent.event = [event copy];
+        }
     }
 
     if ([functionName isEqualToString:@"OnEncodedSyncPData"]) {

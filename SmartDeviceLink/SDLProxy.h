@@ -22,6 +22,7 @@ __deprecated_msg("Use SDLManager instead")
     BOOL _isConnected;
 }
 
+@property (class, nonatomic, assign) CGFloat defaultHiResScaleFactor;
 @property (nullable, strong, nonatomic) SDLAbstractProtocol *protocol;
 @property (nullable, strong, nonatomic) SDLAbstractTransport *transport;
 @property (readonly, copy, nonatomic) NSSet<NSObject<SDLProxyListener> *> *proxyListeners;
