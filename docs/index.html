@@ -4,10 +4,6 @@
       url: Categories/NSString(SDLEnum).html
 - name: Classes
   sub_nav:
-    - name: SDLAbstractProtocol
-      url: Classes/SDLAbstractProtocol.html
-    - name: SDLAbstractTransport
-      url: Classes/SDLAbstractTransport.html
     - name: SDLAddCommand
       url: Classes/SDLAddCommand.html
     - name: SDLAddCommandResponse
@@ -32,6 +28,8 @@
       url: Classes/SDLArtwork.html
     - name: SDLAudioPassThruCapabilities
       url: Classes/SDLAudioPassThruCapabilities.html
+    - name: SDLAudioStreamManager
+      url: Classes/SDLAudioStreamManager.html
     - name: SDLBeltStatus
       url: Classes/SDLBeltStatus.html
     - name: SDLBodyInformation
@@ -42,6 +40,8 @@
       url: Classes/SDLButtonPress.html
     - name: SDLButtonPressResponse
       url: Classes.html#/c:objc(cs)SDLButtonPressResponse
+    - name: SDLCarWindowViewController
+      url: Classes/SDLCarWindowViewController.html
     - name: SDLChangeRegistration
       url: Classes/SDLChangeRegistration.html
     - name: SDLChangeRegistrationResponse
@@ -142,8 +142,6 @@
       url: Classes/SDLHapticRect.html
     - name: SDLHeadLampStatus
       url: Classes/SDLHeadLampStatus.html
-    - name: SDLIAPTransport
-      url: Classes/SDLIAPTransport.html
     - name: SDLImage
       url: Classes/SDLImage.html
     - name: SDLImageField
@@ -154,6 +152,8 @@
       url: Classes/SDLKeyboardProperties.html
     - name: SDLLifecycleConfiguration
       url: Classes/SDLLifecycleConfiguration.html
+    - name: SDLLifecycleConfigurationUpdate
+      url: Classes/SDLLifecycleConfigurationUpdate.html
     - name: SDLListFiles
       url: Classes.html#/c:objc(cs)SDLListFiles
     - name: SDLListFilesResponse
@@ -182,6 +182,8 @@
       url: Classes.html#/c:objc(cs)SDLLogTargetOSLog
     - name: SDLManager
       url: Classes/SDLManager.html
+    - name: SDLMenuCell
+      url: Classes/SDLMenuCell.html
     - name: SDLMenuParams
       url: Classes/SDLMenuParams.html
     - name: SDLMetadataTags
@@ -256,16 +258,6 @@
       url: Classes/SDLPinchGesture.html
     - name: SDLPresetBankCapabilities
       url: Classes/SDLPresetBankCapabilities.html
-    - name: SDLProtocol
-      url: Classes/SDLProtocol.html
-    - name: SDLProtocolHeader
-      url: Classes/SDLProtocolHeader.html
-    - name: SDLProtocolMessage
-      url: Classes/SDLProtocolMessage.html
-    - name: SDLProxy
-      url: Classes/SDLProxy.html
-    - name: SDLProxyFactory
-      url: Classes/SDLProxyFactory.html
     - name: SDLPutFile
       url: Classes/SDLPutFile.html
     - name: SDLPutFileResponse
@@ -306,6 +298,8 @@
       url: Classes/SDLResetGlobalProperties.html
     - name: SDLResetGlobalPropertiesResponse
       url: Classes.html#/c:objc(cs)SDLResetGlobalPropertiesResponse
+    - name: SDLScreenManager
+      url: Classes/SDLScreenManager.html
     - name: SDLScreenParams
       url: Classes/SDLScreenParams.html
     - name: SDLScrollableMessage
@@ -358,6 +352,10 @@
       url: Classes/SDLSoftButton.html
     - name: SDLSoftButtonCapabilities
       url: Classes/SDLSoftButtonCapabilities.html
+    - name: SDLSoftButtonObject
+      url: Classes/SDLSoftButtonObject.html
+    - name: SDLSoftButtonState
+      url: Classes/SDLSoftButtonState.html
     - name: SDLSpeak
       url: Classes/SDLSpeak.html
     - name: SDLSpeakResponse
@@ -388,8 +386,8 @@
       url: Classes.html#/c:objc(cs)SDLSyncPDataResponse
     - name: SDLSystemCapability
       url: Classes/SDLSystemCapability.html
-    - name: SDLTCPTransport
-      url: Classes/SDLTCPTransport.html
+    - name: SDLSystemCapabilityManager
+      url: Classes/SDLSystemCapabilityManager.html
     - name: SDLTTSChunk
       url: Classes/SDLTTSChunk.html
     - name: SDLTemperature
@@ -440,6 +438,8 @@
       url: Classes/SDLVideoStreamingCapability.html
     - name: SDLVideoStreamingFormat
       url: Classes/SDLVideoStreamingFormat.html
+    - name: SDLVoiceCommand
+      url: Classes/SDLVoiceCommand.html
 - name: Constants
   sub_nav:
     - name: SDLAmbientLightStatusDay
@@ -874,6 +874,8 @@
       url: Constants.html#/c:@SDLEmergencyEventTypeRollover
     - name: SDLEmergencyEventTypeSide
       url: Constants.html#/c:@SDLEmergencyEventTypeSide
+    - name: SDLErrorDomainAudioStreamManager
+      url: Constants.html#/c:@SDLErrorDomainAudioStreamManager
     - name: SDLFileTypeAAC
       url: Constants.html#/c:@SDLFileTypeAAC
     - name: SDLFileTypeBMP
@@ -1084,6 +1086,14 @@
       url: Constants.html#/c:@SDLLayoutModeListOnly
     - name: SDLLayoutModeListWithSearch
       url: Constants.html#/c:@SDLLayoutModeListWithSearch
+    - name: SDLLockScreenManagerDidDismissLockScreenViewController
+      url: Constants.html#/c:@SDLLockScreenManagerDidDismissLockScreenViewController
+    - name: SDLLockScreenManagerDidPresentLockScreenViewController
+      url: Constants.html#/c:@SDLLockScreenManagerDidPresentLockScreenViewController
+    - name: SDLLockScreenManagerWillDismissLockScreenViewController
+      url: Constants.html#/c:@SDLLockScreenManagerWillDismissLockScreenViewController
+    - name: SDLLockScreenManagerWillPresentLockScreenViewController
+      url: Constants.html#/c:@SDLLockScreenManagerWillPresentLockScreenViewController
     - name: SDLLockScreenStatusOff
       url: Constants.html#/c:@SDLLockScreenStatusOff
     - name: SDLLockScreenStatusOptional
@@ -1272,8 +1282,6 @@
       url: Constants.html#/c:@SDLPrimaryAudioSourceUSB
     - name: SDLPrimaryAudioSourceUSB2
       url: Constants.html#/c:@SDLPrimaryAudioSourceUSB2
-    - name: SDLProtocolSecurityErrorDomain
-      url: Constants.html#/c:@SDLProtocolSecurityErrorDomain
     - name: SDLRadioBandAM
       url: Constants.html#/c:@SDLRadioBandAM
     - name: SDLRadioBandFM
@@ -1684,6 +1692,8 @@
       url: Constants.html#/c:@SDLVideoStreamDidStartNotification
     - name: SDLVideoStreamDidStopNotification
       url: Constants.html#/c:@SDLVideoStreamDidStopNotification
+    - name: SDLVideoStreamSuspendedNotification
+      url: Constants.html#/c:@SDLVideoStreamSuspendedNotification
     - name: SDLVideoStreamingCodecH264
       url: Constants.html#/c:@SDLVideoStreamingCodecH264
     - name: SDLVideoStreamingCodecH265
@@ -1754,12 +1764,12 @@
   sub_nav:
     - name: SDLArtworkImageFormat
       url: Enums/SDLArtworkImageFormat.html
+    - name: SDLAudioStreamManagerError
+      url: Enums/SDLAudioStreamManagerError.html
+    - name: SDLCarWindowRenderingType
+      url: Enums/SDLCarWindowRenderingType.html
     - name: SDLFileManagerError
       url: Enums/SDLFileManagerError.html
-    - name: SDLFrameInfo
-      url: Enums/SDLFrameInfo.html
-    - name: SDLFrameType
-      url: Enums/SDLFrameType.html
     - name: SDLLogBytesDirection
       url: Enums/SDLLogBytesDirection.html
     - name: SDLLogFlag
@@ -1770,42 +1780,42 @@
       url: Enums/SDLLogLevel.html
     - name: SDLManagerError
       url: Enums/SDLManagerError.html
+    - name: SDLMenuManagerError
+      url: Enums/SDLMenuManagerError.html
     - name: SDLPermissionGroupStatus
       url: Enums/SDLPermissionGroupStatus.html
     - name: SDLPermissionGroupType
       url: Enums/SDLPermissionGroupType.html
-    - name: SDLProtocolError
-      url: Enums/SDLProtocolError.html
     - name: SDLRPCMessageType
       url: Enums/SDLRPCMessageType.html
-    - name: SDLServiceType
-      url: Enums/SDLServiceType.html
+    - name: SDLSoftButtonManagerError
+      url: Enums/SDLSoftButtonManagerError.html
     - name: SDLStreamingEncryptionFlag
       url: Enums/SDLStreamingEncryptionFlag.html
+    - name: SDLTextAndGraphicManagerError
+      url: Enums/SDLTextAndGraphicManagerError.html
 - name: Protocols
   sub_nav:
+    - name: SDLAudioStreamManagerDelegate
+      url: Protocols/SDLAudioStreamManagerDelegate.html
     - name: SDLBool
       url: Protocols.html#/c:objc(pl)SDLBool
     - name: SDLFloat
       url: Protocols.html#/c:objc(pl)SDLFloat
-    - name: SDLIAPSessionDelegate
-      url: Protocols/SDLIAPSessionDelegate.html
     - name: SDLInt
       url: Protocols.html#/c:objc(pl)SDLInt
     - name: SDLLogTarget
       url: Protocols/SDLLogTarget.html
     - name: SDLManagerDelegate
       url: Protocols/SDLManagerDelegate.html
-    - name: SDLProtocolListener
-      url: Protocols/SDLProtocolListener.html
-    - name: SDLProxyListener
-      url: Protocols/SDLProxyListener.html
     - name: SDLSecurityType
       url: Protocols/SDLSecurityType.html
+    - name: SDLStreamingAudioManagerType
+      url: Protocols/SDLStreamingAudioManagerType.html
+    - name: SDLStreamingMediaManagerDataSource
+      url: Protocols/SDLStreamingMediaManagerDataSource.html
     - name: SDLTouchManagerDelegate
       url: Protocols/SDLTouchManagerDelegate.html
-    - name: SDLTransportDelegate
-      url: Protocols/SDLTransportDelegate.html
     - name: SDLUInt
       url: Protocols.html#/c:objc(pl)SDLUInt
 - name: Type Definitions
@@ -1862,12 +1872,18 @@
       url: Type Definitions.html#/c:SDLFileManagerConstants.h@T@SDLFileManagerListFilesCompletionHandler
     - name: SDLFileManagerMultiDeleteCompletionHandler
       url: Type Definitions.html#/c:SDLFileManagerConstants.h@T@SDLFileManagerMultiDeleteCompletionHandler
+    - name: SDLFileManagerMultiUploadArtworkCompletionHandler
+      url: Type Definitions.html#/c:SDLFileManagerConstants.h@T@SDLFileManagerMultiUploadArtworkCompletionHandler
+    - name: SDLFileManagerMultiUploadArtworkProgressHandler
+      url: Type Definitions.html#/c:SDLFileManagerConstants.h@T@SDLFileManagerMultiUploadArtworkProgressHandler
     - name: SDLFileManagerMultiUploadCompletionHandler
       url: Type Definitions.html#/c:SDLFileManagerConstants.h@T@SDLFileManagerMultiUploadCompletionHandler
     - name: SDLFileManagerMultiUploadProgressHandler
       url: Type Definitions.html#/c:SDLFileManagerConstants.h@T@SDLFileManagerMultiUploadProgressHandler
     - name: SDLFileManagerStartupCompletionHandler
       url: Type Definitions.html#/c:SDLFileManager.h@T@SDLFileManagerStartupCompletionHandler
+    - name: SDLFileManagerUploadArtworkCompletionHandler
+      url: Type Definitions.html#/c:SDLFileManagerConstants.h@T@SDLFileManagerUploadArtworkCompletionHandler
     - name: SDLFileManagerUploadCompletionHandler
       url: Type Definitions.html#/c:SDLFileManagerConstants.h@T@SDLFileManagerUploadCompletionHandler
     - name: SDLFileName
@@ -1912,10 +1928,18 @@
       url: Type Definitions.html#/c:SDLManager.h@T@SDLManagerReadyBlock
     - name: SDLMediaClockFormat
       url: Type Definitions.html#/c:SDLMediaClockFormat.h@T@SDLMediaClockFormat
+    - name: SDLMenuCellSelectionHandler
+      url: Type Definitions.html#/c:SDLMenuCell.h@T@SDLMenuCellSelectionHandler
     - name: SDLMetadataType
       url: Type Definitions.html#/c:SDLMetadataType.h@T@SDLMetadataType
     - name: SDLModuleType
       url: Type Definitions.html#/c:SDLModuleType.h@T@SDLModuleType
+    - name: SDLMultipleAsyncRequestProgressHandler
+      url: Type Definitions.html#/c:SDLNotificationConstants.h@T@SDLMultipleAsyncRequestProgressHandler
+    - name: SDLMultipleRequestCompletionHandler
+      url: Type Definitions.html#/c:SDLNotificationConstants.h@T@SDLMultipleRequestCompletionHandler
+    - name: SDLMultipleSequentialRequestProgressHandler
+      url: Type Definitions.html#/c:SDLNotificationConstants.h@T@SDLMultipleSequentialRequestProgressHandler
     - name: SDLNotificationName
       url: Type Definitions.html#/c:SDLNotificationConstants.h@T@SDLNotificationName
     - name: SDLNotificationUserInfoKey
@@ -1956,6 +1980,8 @@
       url: Type Definitions.html#/c:SDLResult.h@T@SDLResult
     - name: SDLSamplingRate
       url: Type Definitions.html#/c:SDLSamplingRate.h@T@SDLSamplingRate
+    - name: SDLScreenManagerUpdateCompletionHandler
+      url: Type Definitions.html#/c:SDLScreenManager.h@T@SDLScreenManagerUpdateCompletionHandler
     - name: SDLSoftButtonType
       url: Type Definitions.html#/c:SDLSoftButtonType.h@T@SDLSoftButtonType
     - name: SDLSpeechCapabilities
@@ -1984,6 +2010,8 @@
       url: Type Definitions.html#/c:SDLTouchType.h@T@SDLTouchType
     - name: SDLTriggerSource
       url: Type Definitions.html#/c:SDLTriggerSource.h@T@SDLTriggerSource
+    - name: SDLUpdateCapabilityHandler
+      url: Type Definitions.html#/c:SDLSystemCapabilityManager.h@T@SDLUpdateCapabilityHandler
     - name: SDLUpdateMode
       url: Type Definitions.html#/c:SDLUpdateMode.h@T@SDLUpdateMode
     - name: SDLVRCapabilities
@@ -2006,6 +2034,8 @@
       url: Type Definitions.html#/c:SDLVideoStreamingCodec.h@T@SDLVideoStreamingCodec
     - name: SDLVideoStreamingProtocol
       url: Type Definitions.html#/c:SDLVideoStreamingProtocol.h@T@SDLVideoStreamingProtocol
+    - name: SDLVoiceCommandSelectionHandler
+      url: Type Definitions.html#/c:SDLVoiceCommand.h@T@SDLVoiceCommandSelectionHandler
     - name: SDLWarningLightStatus
       url: Type Definitions.html#/c:SDLWarningLightStatus.h@T@SDLWarningLightStatus
     - name: SDLWayPointType

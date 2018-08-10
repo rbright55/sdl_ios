@@ -10,17 +10,14 @@
 
 <h3>Overview</h3>
 
-<p>Notifies an application that HMI conditions have changed for the application. This indicates whether the application
- can speak phrases, display text, perform interactions, receive button presses and events, stream audio, etc. This
- notification will be sent to the application when there has been a change in any one or several of the indicated
- states (<i>SDLHMILevel</i>, <i>SDLAudioStreamingState</i> or <i>SDLSystemContext</i>) for the application.</p>
 
-<p>All three values are, in principle, independent of each other (though there may be some relationships). A value for
- one parameter should not be interpreted from the value of another parameter.</p>
+<ul>
+<li>Notifies an application that HMI conditions have changed for the application. This indicates whether the application can speak phrases, display text, perform interactions, receive button presses and events, stream audio, etc. This notification will be sent to the application when there has been a change in any one or several of the indicated states (<i>SDLHMILevel</i>, <i>SDLAudioStreamingState</i> or <i>SDLSystemContext</i>) for the application.</li>
+</ul>
 
-<p>There are no guarantees about the timeliness or latency of the SDLOnHMIStatus notification. Therefore, for example,
- information such as <i>SDLAudioStreamingState</i> may not indicate that the audio stream became inaudible to the user
- exactly when the SDLOnHMIStatus notification was received.</p>
+<p>All three values are, in principle, independent of each other (though there may be some relationships). A value for one parameter should not be interpreted from the value of another parameter.</p>
+
+<p>There are no guarantees about the timeliness or latency of the SDLOnHMIStatus notification. Therefore, for example, information such as <i>SDLAudioStreamingState</i> may not indicate that the audio stream became inaudible to the user exactly when the SDLOnHMIStatus notification was received.</p>
 
 <p>@since SDL 1.0</p>
 
@@ -30,16 +27,16 @@
       hmiLevel
   </h3>
   
-  <p>@abstract SDLHMILevel in effect for the application</p>
+  <p>SDLHMILevel in effect for the application</p>
 
   
   
   <h4>Objective-C</h4>
-  <pre class="highlight"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n"><a href="../Type Definitions.html#/c:SDLHMILevel.h@T@SDLHMILevel">SDLHMILevel</a></span> <span class="n">_Nonnull</span> <span class="n">hmiLevel</span><span class="p">;</span></code></pre>
+  <pre class="highlight objective_c"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n"><a href="../Type Definitions.html#/c:SDLHMILevel.h@T@SDLHMILevel">SDLHMILevel</a></span> <span class="n">_Nonnull</span> <span class="n">hmiLevel</span><span class="p">;</span></code></pre>
 
   
   <h4>Swift</h4>
-  <pre class="highlight"><code><span class="k">var</span> <span class="nv">hmiLevel</span><span class="p">:</span> <span class="kt"><a href="../Type Definitions.html#/c:SDLHMILevel.h@T@SDLHMILevel">SDLHMILevel</a></span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+  <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">hmiLevel</span><span class="p">:</span> <span class="kt"><a href="../Type Definitions.html#/c:SDLHMILevel.h@T@SDLHMILevel">SDLHMILevel</a></span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
 
   
   
@@ -48,19 +45,19 @@
       audioStreamingState
   </h3>
   
-  <p>@abstract Current state of audio streaming for the application. When this parameter has a value of NOT_AUDIBLE, the application must stop streaming audio to SDL.</p>
+  <p>Current state of audio streaming for the application. When this parameter has a value of NOT_AUDIBLE, the application must stop streaming audio to SDL.</p>
 
 <p>Informs app whether any currently streaming audio is audible to user (AUDIBLE) or not (NOT_AUDIBLE). A value of NOT_AUDIBLE means that either the application&rsquo;s audio will not be audible to the user, or that the application&rsquo;s audio should not be audible to the user (i.e. some other application on the mobile device may be streaming audio and the application&rsquo;s audio would be blended with that other audio).</p>
 
   
   
   <h4>Objective-C</h4>
-  <pre class="highlight"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span>
+  <pre class="highlight objective_c"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span>
     <span class="n"><a href="../Type Definitions.html#/c:SDLAudioStreamingState.h@T@SDLAudioStreamingState">SDLAudioStreamingState</a></span> <span class="n">_Nonnull</span> <span class="n">audioStreamingState</span><span class="p">;</span></code></pre>
 
   
   <h4>Swift</h4>
-  <pre class="highlight"><code><span class="k">var</span> <span class="nv">audioStreamingState</span><span class="p">:</span> <span class="kt"><a href="../Type Definitions.html#/c:SDLAudioStreamingState.h@T@SDLAudioStreamingState">SDLAudioStreamingState</a></span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+  <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">audioStreamingState</span><span class="p">:</span> <span class="kt"><a href="../Type Definitions.html#/c:SDLAudioStreamingState.h@T@SDLAudioStreamingState">SDLAudioStreamingState</a></span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
 
   
   
@@ -69,17 +66,16 @@
       systemContext
   </h3>
   
-  <p>@abstract the System Context
-@discussion whether a user-initiated interaction is in-progress (VRSESSION or MENU), or not (MAIN)</p>
+  <p>Whether a user-initiated interaction is in-progress (VRSESSION or MENU), or not (MAIN)</p>
 
   
   
   <h4>Objective-C</h4>
-  <pre class="highlight"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n"><a href="../Type Definitions.html#/c:SDLSystemContext.h@T@SDLSystemContext">SDLSystemContext</a></span> <span class="n">_Nonnull</span> <span class="n">systemContext</span><span class="p">;</span></code></pre>
+  <pre class="highlight objective_c"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n"><a href="../Type Definitions.html#/c:SDLSystemContext.h@T@SDLSystemContext">SDLSystemContext</a></span> <span class="n">_Nonnull</span> <span class="n">systemContext</span><span class="p">;</span></code></pre>
 
   
   <h4>Swift</h4>
-  <pre class="highlight"><code><span class="k">var</span> <span class="nv">systemContext</span><span class="p">:</span> <span class="kt"><a href="../Type Definitions.html#/c:SDLSystemContext.h@T@SDLSystemContext">SDLSystemContext</a></span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+  <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">systemContext</span><span class="p">:</span> <span class="kt"><a href="../Type Definitions.html#/c:SDLSystemContext.h@T@SDLSystemContext">SDLSystemContext</a></span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
 
   
   

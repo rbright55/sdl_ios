@@ -18,12 +18,15 @@
 @class SDLRPCNotification;
 @class SDLRPCRequest;
 @class SDLRPCResponse;
+@class SDLScreenManager;
 @class SDLStreamingMediaManager;
+@class SDLSystemCapabilityManager;
 
 @protocol SDLManagerDelegate;
 
 
 NS_ASSUME_NONNULL_BEGIN
+
 
 typedef void (^SDLManagerReadyBlock)(BOOL success, NSError *_Nullable error);
 
@@ -38,7 +41,7 @@ typedef void (^SDLManagerReadyBlock)(BOOL success, NSError *_Nullable error);
 /**
  *  The current HMI level of the running app.
  */
-@property (copy, nonatomic, readonly) SDLHMILevel hmiLevel;
+@property (copy, nonatomic, readonly, nullable) SDLHMILevel hmiLevel;
 
 /**
  *  The current audio streaming state of the running app.
@@ -66,6 +69,16 @@ typedef void (^SDLManagerReadyBlock)(BOOL success, NSError *_Nullable error);
 @property (strong, nonatomic, readonly, nullable) SDLStreamingMediaManager *streamManager;
 
 /**
+ *  The screen manager for sending UI related RPCs.
+ */
+@property (strong, nonatomic, readonly) SDLScreenManager *screenManager;
+
+/**
+ *  Centralized manager for retrieving all system capabilities.
+ */
+@property (strong, nonatomic, readonly) SDLSystemCapabilityManager *systemCapabilityManager;
+
+/**
  *  The response of a register call after it has been received.
  */
 @property (strong, nonatomic, readonly, nullable) SDLRegisterAppInterfaceResponse *registerResponse;
@@ -74,6 +87,11 @@ typedef void (^SDLManagerReadyBlock)(BOOL success, NSError *_Nullable error);
  *  The manager's delegate.
  */
 @property (weak, nonatomic, nullable) id<SDLManagerDelegate> delegate;
+
+/**
+ The currently pending RPC request send transactions
+ */
+@property (copy, nonatomic, readonly) NSArray<__kindof NSOperation *> *pendingRPCTransactions;
 
 /**
  * Deprecated internal proxy object. This should only be accessed when the Manager is READY. This property may go to nil at any time.
@@ -128,6 +146,24 @@ typedef void (^SDLManagerReadyBlock)(BOOL success, NSError *_Nullable error);
  *  @param handler The handler that will be called when the response returns
  */
 - (void)sendRequest:(SDLRPCRequest *)request withResponseHandler:(nullable SDLResponseHandler)handler NS_SWIFT_NAME(send(request:responseHandler:));
+
+/**
+ Send all of the requests given as quickly as possible, but in order. Call the completionHandler after all requests have either failed or given a response.
+
+ @param requests The requests to be sent
+ @param progressHandler A handler called every time a response is received
+ @param completionHandler A handler to call when all requests have been responded to
+ */
+- (void)sendRequests:(NSArray<SDLRPCRequest *> *)requests progressHandler:(nullable SDLMultipleAsyncRequestProgressHandler)progressHandler completionHandler:(nullable SDLMultipleRequestCompletionHandler)completionHandler;
+
+/**
+ Send all of the requests one at a time, with the next one going out only after the previous one has received a response. Call the completionHandler after all requests have either failed or given a response.
+
+ @param requests The requests to be sent
+ @param progressHandler A handler called every time a response is received. Return NO to cancel any requests that have not yet been sent, YES to continue sending requests.
+ @param completionHandler A handler to call when all requests have been responded to
+ */
+- (void)sendSequentialRequests:(NSArray<SDLRPCRequest *> *)requests progressHandler:(nullable SDLMultipleSequentialRequestProgressHandler)progressHandler completionHandler:(nullable SDLMultipleRequestCompletionHandler)completionHandler NS_SWIFT_NAME(sendSequential(requests:progressHandler:completionHandler:));
 
 @end
 

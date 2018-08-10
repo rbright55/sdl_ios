@@ -19,17 +19,47 @@ NS_ASSUME_NONNULL_BEGIN
     if (!self) {
         return nil;
     }
-    
+
     _receivedRequests = [NSMutableArray<__kindof SDLRPCRequest *> array];
 
     return self;
 }
 
-- (void)sendManagerRequest:(__kindof SDLRPCRequest *)request withResponseHandler:(nullable SDLResponseHandler)handler {
+- (void)sendConnectionRequest:(__kindof SDLRPCRequest *)request withResponseHandler:(nullable SDLResponseHandler)handler {
     self.lastRequestBlock = handler;
     request.correlationID = [self test_nextCorrelationID];
     [self.receivedRequests addObject:request];
 }
+
+- (void)sendConnectionManagerRequest:(__kindof SDLRPCRequest *)request withResponseHandler:(nullable SDLResponseHandler)handler {
+    [self sendConnectionRequest:request withResponseHandler:handler];
+}
+
+- (void)sendRequests:(nonnull NSArray<SDLRPCRequest *> *)requests progressHandler:(nullable SDLMultipleAsyncRequestProgressHandler)progressHandler completionHandler:(nullable SDLMultipleRequestCompletionHandler)completionHandler {
+    [requests enumerateObjectsUsingBlock:^(SDLRPCRequest * _Nonnull request, NSUInteger idx, BOOL * _Nonnull stop) {
+        [self sendConnectionRequest:request withResponseHandler:nil];
+
+        if (progressHandler != nil) {
+            progressHandler(request, nil, nil, (double)idx / (double)requests.count);
+        }
+    }];
+
+    if (completionHandler != nil) {
+        completionHandler(YES);
+    }
+}
+
+- (void)sendSequentialRequests:(nonnull NSArray<SDLRPCRequest *> *)requests progressHandler:(nullable SDLMultipleSequentialRequestProgressHandler)progressHandler completionHandler:(nullable SDLMultipleRequestCompletionHandler)completionHandler {
+    [requests enumerateObjectsUsingBlock:^(SDLRPCRequest * _Nonnull request, NSUInteger idx, BOOL * _Nonnull stop) {
+        [self sendConnectionRequest:request withResponseHandler:nil];
+        progressHandler(request, nil, nil, (double)idx / (double)requests.count);
+    }];
+
+    if (completionHandler != nil) {
+        completionHandler(YES);
+    }
+}
+
 
 - (void)respondToLastRequestWithResponse:(__kindof SDLRPCResponse *)response {
     [self respondToLastRequestWithResponse:response error:nil];

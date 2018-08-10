@@ -9,9 +9,11 @@
 #import <Foundation/Foundation.h>
 #import <VideoToolbox/VideoToolbox.h>
 
+#import "SDLStreamingAudioManagerType.h"
 #import "SDLStreamingMediaManagerConstants.h"
 
-@class SDLAbstractProtocol;
+@class SDLAudioStreamManager;
+@class SDLProtocol;
 @class SDLStreamingMediaConfiguration;
 @class SDLTouchManager;
 @class SDLVideoStreamingFormat;
@@ -23,12 +25,22 @@ NS_ASSUME_NONNULL_BEGIN
 
 #pragma mark - Interface
 
-@interface SDLStreamingMediaManager : NSObject
+@interface SDLStreamingMediaManager : NSObject <SDLStreamingAudioManagerType>
 
 /**
  *  Touch Manager responsible for providing touch event notifications.
  */
 @property (nonatomic, strong, readonly) SDLTouchManager *touchManager;
+
+/**
+ *  Audio Manager responsible for managing streaming audio.
+ */
+@property (nonatomic, strong, readonly) SDLAudioStreamManager *audioManager;
+
+/**
+ This property is used for SDLCarWindow, the ability to stream any view controller. To start, you must set an initial view controller on `SDLStreamingMediaConfiguration` `rootViewController`. After streaming begins, you can replace that view controller with a new root by placing the new view controller into this property.
+ */
+@property (nonatomic, strong) UIViewController *rootViewController;
 
 /**
  A haptic interface that can be updated to reparse views within the window you've provided. Send a `SDLDidUpdateProjectionView` notification or call the `updateInterfaceLayout` method to reparse. The "output" of this haptic interface occurs in the `touchManager` property where it will call the delegate.
@@ -113,7 +125,7 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  *  Start the manager with a completion block that will be called when startup completes. This is used internally. To use an SDLStreamingMediaManager, you should use the manager found on `SDLManager`.
  */
-- (void)startWithProtocol:(SDLAbstractProtocol *)protocol;
+- (void)startWithProtocol:(SDLProtocol *)protocol;
 
 /**
  *  Stop the manager. This method is used internally.

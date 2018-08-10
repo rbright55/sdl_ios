@@ -69,7 +69,7 @@ int const ProtocolIndexTimeoutSeconds = 10;
     if (self.backgroundTaskId != UIBackgroundTaskInvalid) {
         return;
     }
-    
+
     SDLLogD(@"Starting background task");
     self.backgroundTaskId = [[UIApplication sharedApplication] beginBackgroundTaskWithName:BackgroundTaskName expirationHandler:^{
         SDLLogD(@"Background task expired");
@@ -139,8 +139,6 @@ int const ProtocolIndexTimeoutSeconds = 10;
  *  @param notification Contains information about the connected accessory
  */
 - (void)sdl_accessoryConnected:(NSNotification *)notification {
-    EAAccessory *accessory = notification.userInfo[EAAccessoryKey];
-    
     double retryDelay = self.retryDelay;
     SDLLogD(@"Accessory Connected (%@), Opening in %0.03fs", notification.userInfo[EAAccessoryKey], retryDelay);
     
@@ -148,8 +146,9 @@ int const ProtocolIndexTimeoutSeconds = 10;
         SDLLogD(@"Accessory connected while app is in background. Starting background task.");
         [self sdl_backgroundTaskStart];
     }
-    
-    [self performSelector:@selector(sdl_connect:) withObject:accessory afterDelay:retryDelay];
+
+    self.retryCounter = 0;
+    [self performSelector:@selector(sdl_connect:) withObject:nil afterDelay:retryDelay];
 }
 
 /**
@@ -160,11 +159,11 @@ int const ProtocolIndexTimeoutSeconds = 10;
 - (void)sdl_accessoryDisconnected:(NSNotification *)notification {
     EAAccessory *accessory = [notification.userInfo objectForKey:EAAccessoryKey];
     if (accessory.connectionID != self.session.accessory.connectionID) {
-        SDLLogD(@"Accessory disconnected during control session (%@)", accessory);
+        SDLLogV(@"Accessory disconnected during control session (%@)", accessory);
         self.retryCounter = 0;
     }
     if ([accessory.serialNumber isEqualToString:self.session.accessory.serialNumber]) {
-        SDLLogD(@"Accessory disconnected durig data session (%@)", accessory);
+        SDLLogV(@"Accessory disconnected during data session (%@)", accessory);
         self.retryCounter = 0;
         self.sessionSetupInProgress = NO;
         [self disconnect];
@@ -200,6 +199,12 @@ int const ProtocolIndexTimeoutSeconds = 10;
 #pragma mark - Stream Lifecycle
 
 - (void)connect {
+    UIApplicationState state = [UIApplication sharedApplication].applicationState;
+    if (state != UIApplicationStateActive) {
+        SDLLogV(@"App inactive on connect, starting background task");
+        [self sdl_backgroundTaskStart];
+    }
+
     [self sdl_connect:nil];
 }
 
@@ -428,7 +433,10 @@ int const ProtocolIndexTimeoutSeconds = 10;
     // Control Session Opened
     if ([ControlProtocolString isEqualToString:session.protocol]) {
         SDLLogD(@"Control Session Established");
-        [self.protocolIndexTimer start];
+        
+        if (!self.session) {
+            [self.protocolIndexTimer start];
+        }
     }
     
     // Data Session Opened
@@ -493,7 +501,7 @@ int const ProtocolIndexTimeoutSeconds = 10;
         
         // Read in the stream a single byte at a time
         uint8_t buf[1];
-        NSUInteger len = [istream read:buf maxLength:1];
+        NSInteger len = [istream read:buf maxLength:1];
         if (len <= 0) {
             return;
         }
@@ -504,7 +512,6 @@ int const ProtocolIndexTimeoutSeconds = 10;
         SDLLogD(@"Control Stream will switch to protocol %@", indexedProtocolString);
         
         // Destroy the control session
-        [strongSelf.protocolIndexTimer cancel];
         dispatch_sync(dispatch_get_main_queue(), ^{
             [strongSelf.controlSession stop];
             strongSelf.controlSession.streamDelegate = nil;
@@ -514,8 +521,11 @@ int const ProtocolIndexTimeoutSeconds = 10;
         if (accessory.isConnected) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 [strongSelf sdl_createIAPDataSessionWithAccessory:accessory forProtocol:indexedProtocolString];
+                [strongSelf.protocolIndexTimer cancel];
             });
         }
+
+        [strongSelf sdl_backgroundTaskStart];
     };
 }
 
@@ -566,7 +576,12 @@ int const ProtocolIndexTimeoutSeconds = 10;
             // It is necessary to check the stream status and whether there are bytes available because the dataStreamHasBytesHandler is executed on the IO thread and the accessory disconnect notification arrives on the main thread, causing data to be passed to the delegate while the main thread is tearing down the transport.
             
             NSInteger bytesRead = [istream read:buf maxLength:[[SDLGlobals sharedGlobals] mtuSizeForServiceType:SDLServiceTypeRPC]];
-            NSData *dataIn = [NSData dataWithBytes:buf length:bytesRead];
+            if (bytesRead < 0) {
+                SDLLogE(@"Failed to read from data stream");
+                break;
+            }
+
+            NSData *dataIn = [NSData dataWithBytes:buf length:(NSUInteger)bytesRead];
             SDLLogBytes(dataIn, SDLLogBytesDirectionReceive);
 
             if (bytesRead > 0) {
@@ -575,6 +590,8 @@ int const ProtocolIndexTimeoutSeconds = 10;
                 break;
             }
         }
+
+        [strongSelf sdl_backgroundTaskStart];
     };
 }
 
@@ -638,6 +655,7 @@ int const ProtocolIndexTimeoutSeconds = 10;
 
 - (void)sdl_destructObjects {
     if (!_alreadyDestructed) {
+        [self sdl_backgroundTaskEnd];
         _alreadyDestructed = YES;
         self.controlSession = nil;
         self.session = nil;

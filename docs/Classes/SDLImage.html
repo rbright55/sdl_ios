@@ -4,13 +4,15 @@
 
 <ul>
   <li><a href="#section--initWithName:ofType:">-initWithName:ofType:</a></li>
+  <li><a href="#section--initWithName:">-initWithName:</a></li>
+  <li><a href="#section--initWithStaticImageValue:">-initWithStaticImageValue:</a></li>
   <li><a href="#section-value">value</a></li>
   <li><a href="#section-imageType">imageType</a></li>
 </ul>
 
 <h3>Overview</h3>
 
-<p>Specifies, which image shall be used, e.g. in SDLAlerts or on SDLSoftbuttons provided the display supports it.</p>
+<p>Specifies which image shall be used e.g. in SDLAlerts or on SDLSoftbuttons provided the display supports it.</p>
 
 <p>@since SDL 2.0</p>
 
@@ -25,11 +27,47 @@
   
   
   <h4>Objective-C</h4>
-  <pre class="highlight"><code><span class="k">-</span> <span class="p">(</span><span class="n">instancetype</span><span class="p">)</span><span class="nf">initWithName</span><span class="p">:(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">name</span> <span class="nf">ofType</span><span class="p">:(</span><span class="n"><a href="../Type Definitions.html#/c:SDLImageType.h@T@SDLImageType">SDLImageType</a></span><span class="p">)</span><span class="nv">imageType</span><span class="p">;</span></code></pre>
+  <pre class="highlight objective_c"><code><span class="k">-</span> <span class="p">(</span><span class="n">instancetype</span><span class="p">)</span><span class="nf">initWithName</span><span class="p">:(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">name</span> <span class="nf">ofType</span><span class="p">:(</span><span class="n"><a href="../Type Definitions.html#/c:SDLImageType.h@T@SDLImageType">SDLImageType</a></span><span class="p">)</span><span class="nv">imageType</span><span class="p">;</span></code></pre>
 
   
   <h4>Swift</h4>
-  <pre class="highlight"><code><span class="nf">init</span><span class="p">(</span><span class="nv">name</span><span class="p">:</span> <span class="kt">String</span><span class="p">,</span> <span class="n">ofType</span> <span class="nv">imageType</span><span class="p">:</span> <span class="kt"><a href="../Type Definitions.html#/c:SDLImageType.h@T@SDLImageType">SDLImageType</a></span><span class="p">)</span></code></pre>
+  <pre class="highlight swift"><code><span class="nf">init</span><span class="p">(</span><span class="nv">name</span><span class="p">:</span> <span class="kt">String</span><span class="p">,</span> <span class="n">ofType</span> <span class="nv">imageType</span><span class="p">:</span> <span class="kt"><a href="../Type Definitions.html#/c:SDLImageType.h@T@SDLImageType">SDLImageType</a></span><span class="p">)</span></code></pre>
+
+  
+  
+  
+  <h3 id="section--initWithName:">
+      -initWithName:
+  </h3>
+  
+  <p>Undocumented</p>
+
+  
+  
+  <h4>Objective-C</h4>
+  <pre class="highlight objective_c"><code><span class="k">-</span> <span class="p">(</span><span class="n">instancetype</span><span class="p">)</span><span class="nf">initWithName</span><span class="p">:(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">name</span><span class="p">;</span></code></pre>
+
+  
+  <h4>Swift</h4>
+  <pre class="highlight swift"><code><span class="nf">init</span><span class="p">(</span><span class="nv">name</span><span class="p">:</span> <span class="kt">String</span><span class="p">)</span></code></pre>
+
+  
+  
+  
+  <h3 id="section--initWithStaticImageValue:">
+      -initWithStaticImageValue:
+  </h3>
+  
+  <p>Undocumented</p>
+
+  
+  
+  <h4>Objective-C</h4>
+  <pre class="highlight objective_c"><code><span class="k">-</span> <span class="p">(</span><span class="n">instancetype</span><span class="p">)</span><span class="nf">initWithStaticImageValue</span><span class="p">:(</span><span class="n">UInt16</span><span class="p">)</span><span class="nv">staticImageValue</span><span class="p">;</span></code></pre>
+
+  
+  <h4>Swift</h4>
+  <pre class="highlight swift"><code><span class="nf">init</span><span class="p">(</span><span class="nv">staticImageValue</span><span class="p">:</span> <span class="kt">UInt16</span><span class="p">)</span></code></pre>
 
   
   
@@ -38,18 +76,18 @@
       value
   </h3>
   
-  <p>@abstract The static hex icon value or the binary image file name identifier (sent by SDLPutFile)</p>
+  <p>The static hex icon value or the binary image file name identifier (sent by SDLPutFile)</p>
 
 <p>Required, max length = 65535</p>
 
   
   
   <h4>Objective-C</h4>
-  <pre class="highlight"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">NSString</span> <span class="o">*</span><span class="n">_Nonnull</span> <span class="n">value</span><span class="p">;</span></code></pre>
+  <pre class="highlight objective_c"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">NSString</span> <span class="o">*</span><span class="n">_Nonnull</span> <span class="n">value</span><span class="p">;</span></code></pre>
 
   
   <h4>Swift</h4>
-  <pre class="highlight"><code><span class="k">var</span> <span class="nv">value</span><span class="p">:</span> <span class="kt">String</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+  <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">value</span><span class="p">:</span> <span class="kt">String</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
 
   
   
@@ -58,18 +96,18 @@
       imageType
   </h3>
   
-  <p>@abstract Describes, whether it is a static or dynamic image</p>
+  <p>Describes whether the image is static or dynamic</p>
 
 <p>Required</p>
 
   
   
   <h4>Objective-C</h4>
-  <pre class="highlight"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n"><a href="../Type Definitions.html#/c:SDLImageType.h@T@SDLImageType">SDLImageType</a></span> <span class="n">_Nonnull</span> <span class="n">imageType</span><span class="p">;</span></code></pre>
+  <pre class="highlight objective_c"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n"><a href="../Type Definitions.html#/c:SDLImageType.h@T@SDLImageType">SDLImageType</a></span> <span class="n">_Nonnull</span> <span class="n">imageType</span><span class="p">;</span></code></pre>
 
   
   <h4>Swift</h4>
-  <pre class="highlight"><code><span class="k">var</span> <span class="nv">imageType</span><span class="p">:</span> <span class="kt"><a href="../Type Definitions.html#/c:SDLImageType.h@T@SDLImageType">SDLImageType</a></span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+  <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">imageType</span><span class="p">:</span> <span class="kt"><a href="../Type Definitions.html#/c:SDLImageType.h@T@SDLImageType">SDLImageType</a></span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
 
   
   

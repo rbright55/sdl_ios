@@ -80,33 +80,34 @@ NSTimeInterval const StreamThreadWaitSecs = 1.0;
 }
 
 - (void)stop {
-    dispatch_block_t block = ^{
-        if (self.isDataSession) {
-            [self.ioStreamThread cancel];
-            
-            long lWait = dispatch_semaphore_wait(self.canceledSemaphore, dispatch_time(DISPATCH_TIME_NOW, StreamThreadWaitSecs * NSEC_PER_SEC));
-            if (lWait == 0) {
-                SDLLogW(@"Stream thread cancelled");
-            } else {
-                SDLLogE(@"Failed to cancel stream thread");
-            }
-            self.ioStreamThread = nil;
-            self.isDataSession = NO;
-        } else {
-            // Stop control session
-            [self stopStream:self.easession.outputStream];
-            [self stopStream:self.easession.inputStream];
-        }
-        self.easession = nil;
-    };
-    
-    if (![NSThread isMainThread]) {
-        // we are not in main thread so dispatch sync to the main queue
-        dispatch_sync(dispatch_get_main_queue(), block);
+    // This method must be called on the main thread
+    if ([NSThread isMainThread]) {
+        [self sdl_stop];
     } else {
-        // we are in main thread so direct call the stop code;
-        block();
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            [self sdl_stop];
+        });
     }
+}
+
+- (void)sdl_stop {
+    if (self.isDataSession) {
+        [self.ioStreamThread cancel];
+
+        long lWait = dispatch_semaphore_wait(self.canceledSemaphore, dispatch_time(DISPATCH_TIME_NOW, (int64_t)(StreamThreadWaitSecs * NSEC_PER_SEC)));
+        if (lWait == 0) {
+            SDLLogW(@"Stream thread cancelled");
+        } else {
+            SDLLogE(@"Failed to cancel stream thread");
+        }
+        self.ioStreamThread = nil;
+        self.isDataSession = NO;
+    } else {
+        // Stop control session
+        [self stopStream:self.easession.outputStream];
+        [self stopStream:self.easession.inputStream];
+    }
+    self.easession = nil;
 }
 
 - (BOOL)isStopped {
@@ -124,10 +125,14 @@ NSTimeInterval const StreamThreadWaitSecs = 1.0;
 
 - (void)sdl_dequeueAndWriteToOutputStream {
     NSOutputStream *ostream = self.easession.outputStream;
+    if (!ostream.hasSpaceAvailable) {
+        return;
+    }
+    
     NSMutableData *remainder = [self.sendDataQueue frontBuffer];
 
     if (remainder != nil && ostream.streamStatus == NSStreamStatusOpen) {
-        NSInteger bytesRemaining = remainder.length;
+        NSUInteger bytesRemaining = remainder.length;
         NSInteger bytesWritten = [ostream write:remainder.bytes maxLength:bytesRemaining];
         if (bytesWritten < 0) {
             if (ostream.streamError != nil) {
@@ -138,7 +143,7 @@ NSTimeInterval const StreamThreadWaitSecs = 1.0;
             [self.sendDataQueue popBuffer];
         } else {
             // Cleave the sent bytes from the data, the remainder will sit at the head of the queue
-            [remainder replaceBytesInRange:NSMakeRange(0, bytesWritten) withBytes:NULL length:0];
+            [remainder replaceBytesInRange:NSMakeRange(0, (NSUInteger)bytesWritten) withBytes:NULL length:0];
         }
     }
 }

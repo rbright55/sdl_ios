@@ -41,12 +41,33 @@ typedef void(^SDLTouchEventHandler)(SDLTouch *touch, SDLTouchType type);
 @property (nonatomic, assign) CGFloat tapDistanceThreshold;
 
 /**
+ Minimum distance for a pan gesture in the head unit's coordinate system, used for registering pan callbacks.
+ 
+ @note Defaults to 8 px.
+ */
+@property (nonatomic, assign) CGFloat panDistanceThreshold;
+
+/**
  *  @abstract
  *      Time (in seconds) between tap events to register a double-tap callback.
  *  @remark
  *      Default is 0.4 seconds.
  */
 @property (nonatomic, assign) CGFloat tapTimeThreshold;
+
+/**
+ *  @abstract
+ *      Time (in seconds) between movement events to register panning or pinching 
+ *      callbacks.
+ *  @remark
+ *      Default is 0.05 seconds.
+ */
+@property (nonatomic, assign) CGFloat movementTimeThreshold __deprecated_msg("This is now unused, the movement time threshold is now synced to the framerate automatically");
+
+/**
+ If set to NO, the display link syncing will be ignored and `movementTimeThreshold` will be used. Defaults to YES.
+ */
+@property (assign, nonatomic) BOOL enableSyncedPanning;
 
 /**
  *  @abstract
@@ -75,8 +96,10 @@ typedef void(^SDLTouchEventHandler)(SDLTouch *touch, SDLTouchType type);
  */
 - (instancetype)initWithHitTester:(nullable id<SDLFocusableItemHitTester>)hitTester;
 
-- (void)notifyNewFrameDraw; // KSHALA added to tell the touch manager that there will be a new frame soon
-
+/**
+ Called by SDLStreamingMediaManager in sync with the streaming framerate. This helps to moderate panning gestures by allowing the UI to be modified in time with the framerate.
+ */
+- (void)syncFrame;
 
 @end
 

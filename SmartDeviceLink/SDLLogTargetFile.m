@@ -111,9 +111,9 @@ NS_ASSUME_NONNULL_BEGIN
     NSArray<NSString *> *sortedLogFilePaths = [self sdl_sortedLogFilePaths];
 
     // If we have more files now than the max, remove the oldest ones
-    NSInteger filesToRemove = sortedLogFilePaths.count - maxFiles;
-    for (int i = 0; i < filesToRemove; i++) {
-        NSString *path = [[self sdl_logDirectory] stringByAppendingPathComponent:sortedLogFilePaths[i]];
+    NSInteger filesToRemove = (NSInteger)sortedLogFilePaths.count - (NSInteger)maxFiles;
+    for (NSInteger i = 0; i < filesToRemove; i++) {
+        NSString *path = [[self sdl_logDirectory] stringByAppendingPathComponent:sortedLogFilePaths[(NSUInteger)i]];
         [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
     }
 }

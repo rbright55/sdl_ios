@@ -6,7 +6,7 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 
-#import "SDLAbstractTransport.h"
+#import "SDLTransportType.h"
 #import "SDLAudioStreamingState.h"
 #import "SDLLogMacros.h"
 #import "SDLEncodedSyncPData.h"
@@ -14,10 +14,10 @@
 #import "SDLFunctionID.h"
 #import "SDLGlobals.h"
 #import "SDLHMILevel.h"
+#import "SDLIAPTransport.h"
 #import "SDLLanguage.h"
 #import "SDLLayoutMode.h"
 #import "SDLLockScreenStatusManager.h"
-
 #import "SDLOnHMIStatus.h"
 #import "SDLOnSystemRequest.h"
 #import "SDLPolicyDataParser.h"
@@ -32,6 +32,7 @@
 #import "SDLStreamingMediaManager.h"
 #import "SDLSystemContext.h"
 #import "SDLSystemRequest.h"
+#import "SDLTCPTransport.h"
 #import "SDLTimer.h"
 #import "SDLVehicleType.h"
 
@@ -50,9 +51,9 @@ typedef NSString SDLVehicleMake;
 typedef void (^URLSessionTaskCompletionHandler)(NSData *data, NSURLResponse *response, NSError *error);
 typedef void (^URLSessionDownloadTaskCompletionHandler)(NSURL *location, NSURLResponse *response, NSError *error);
 
-NSString *const SDLProxyVersion = @"5.0.0";
+NSString *const SDLProxyVersion = @"6.0.1";
 const float StartSessionTime = 10.0;
-const float NotifyProxyClosedDelay = 0.1;
+const float NotifyProxyClosedDelay = (float)0.1;
 const int PoliciesCorrelationId = 65535;
 static float DefaultConnectionTimeout = 45.0;
 
@@ -65,6 +66,7 @@ static float DefaultConnectionTimeout = 45.0;
 @property (nullable, nonatomic, strong) SDLDisplayCapabilities *displayCapabilities;
 @property (nonatomic, strong) NSMutableDictionary<SDLVehicleMake *, Class> *securityManagers;
 @property (nonatomic, strong) NSURLSession* urlSession;
+@property (strong, nonatomic) dispatch_queue_t rpcProcessingQueue;
 
 
 @property (nonatomic, assign) BOOL scaleWorkaroundEnabled;
@@ -84,17 +86,18 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
 }
 
 #pragma mark - Object lifecycle
-- (instancetype)initWithTransport:(SDLAbstractTransport *)transport protocol:(SDLAbstractProtocol *)protocol delegate:(NSObject<SDLProxyListener> *)theDelegate {
+- (instancetype)initWithTransport:(id<SDLTransportType>)transport delegate:(id<SDLProxyListener>)delegate {
     if (self = [super init]) {
         SDLLogD(@"Framework Version: %@", self.proxyVersion);
-        _debugConsoleGroupName = @"default";
         _lsm = [[SDLLockScreenStatusManager alloc] init];
-
-        _mutableProxyListeners = [NSMutableSet setWithObject:theDelegate];
+        _rpcProcessingQueue = dispatch_queue_create("com.sdl.rpcProcessingQueue", DISPATCH_QUEUE_SERIAL);
+        _mutableProxyListeners = [NSMutableSet setWithObject:delegate];
         _securityManagers = [NSMutableDictionary dictionary];
-        _protocol = protocol;
+
+        _protocol = [[SDLProtocol alloc] init];
         _transport = transport;
-        _transport.delegate = protocol;
+        _transport.delegate = _protocol;
+
         [_protocol.protocolDelegateTable addObject:self];
         _protocol.transport = transport;
 
@@ -117,9 +120,28 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
     return self;
 }
 
++ (SDLProxy *)iapProxyWithListener:(id<SDLProxyListener>)delegate {
+    SDLIAPTransport *transport = [[SDLIAPTransport alloc] init];
+    SDLProxy *ret = [[SDLProxy alloc] initWithTransport:transport delegate:delegate];
+
+    return ret;
+}
+
++ (SDLProxy *)tcpProxyWithListener:(id<SDLProxyListener>)delegate tcpIPAddress:(NSString *)ipaddress tcpPort:(NSString *)port {
+    SDLTCPTransport *transport = [[SDLTCPTransport alloc] initWithHostName:ipaddress portNumber:port];
+
+    SDLProxy *ret = [[SDLProxy alloc] initWithTransport:transport delegate:delegate];
+
+    return ret;
+}
+
 - (void)dealloc {
     if (self.protocol.securityManager != nil) {
         [self.protocol.securityManager stop];
+    }
+
+    if (self.transport != nil) {
+        [self.transport disconnect];
     }
     
     [[NSNotificationCenter defaultCenter] removeObserver:self];
@@ -140,6 +162,12 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
 #pragma mark - Application Lifecycle
 
 - (void)sendMobileHMIState {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self sdl_sendMobileHMIState];
+    });
+}
+
+- (void)sdl_sendMobileHMIState {
     UIApplicationState appState = [UIApplication sharedApplication].applicationState;
     SDLOnHMIStatus *HMIStatusRPC = [[SDLOnHMIStatus alloc] init];
 
@@ -154,8 +182,7 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
         case UIApplicationStateInactive: {
             HMIStatusRPC.hmiLevel = SDLHMILevelBackground;
         } break;
-        default:
-            break;
+        default: break;
     }
 
     SDLLogD(@"Mobile UIApplication state changed, sending to remote system: %@", HMIStatusRPC.hmiLevel);
@@ -217,7 +244,7 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
 - (void)onProtocolOpened {
     _isConnected = YES;
     SDLLogV(@"Proxy RPC protocol opened");
-    // THe RPC payload will be created by the protocol object...it's weird and confusing, I know.
+    // The RPC payload will be created by the protocol object...it's weird and confusing, I know.
     [self.protocol startServiceWithType:SDLServiceTypeRPC payload:nil];
 
     if (self.startSessionTimer == nil) {
@@ -706,13 +733,12 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
 }
 
 - (void)invokeMethodOnDelegates:(SEL)aSelector withObject:(nullable id)object {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        @autoreleasepool {
-            for (id<SDLProxyListener> listener in self.proxyListeners) {
-                if ([listener respondsToSelector:aSelector]) {
-                    // HAX: http://stackoverflow.com/questions/7017281/performselector-may-cause-a-leak-because-its-selector-is-unknown
-                    ((void (*)(id, SEL, id))[(NSObject *)listener methodForSelector:aSelector])(listener, aSelector, object);
-                }
+    // Occurs on the protocol receive serial queue
+    dispatch_async(_rpcProcessingQueue, ^{
+        for (id<SDLProxyListener> listener in self.proxyListeners) {
+            if ([listener respondsToSelector:aSelector]) {
+                // HAX: http://stackoverflow.com/questions/7017281/performselector-may-cause-a-leak-because-its-selector-is-unknown
+                ((void (*)(id, SEL, id))[(NSObject *)listener methodForSelector:aSelector])(listener, aSelector, object);
             }
         }
     });
@@ -792,15 +818,15 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
             NSUInteger currentStreamOffset = [[stream propertyForKey:NSStreamFileCurrentOffsetKey] unsignedIntegerValue];
 
             NSMutableData *buffer = [NSMutableData dataWithLength:[[SDLGlobals sharedGlobals] mtuSizeForServiceType:SDLServiceTypeRPC]];
-            NSUInteger nBytesRead = [(NSInputStream *)stream read:(uint8_t *)buffer.mutableBytes maxLength:buffer.length];
+            NSInteger nBytesRead = [(NSInputStream *)stream read:(uint8_t *)buffer.mutableBytes maxLength:buffer.length];
             if (nBytesRead > 0) {
-                NSData *data = [buffer subdataWithRange:NSMakeRange(0, nBytesRead)];
+                NSData *data = [buffer subdataWithRange:NSMakeRange(0, (NSUInteger)nBytesRead)];
                 NSUInteger baseOffset = [(NSNumber *)objc_getAssociatedObject(stream, @"BaseOffset") unsignedIntegerValue];
                 NSUInteger newOffset = baseOffset + currentStreamOffset;
 
                 SDLPutFile *putFileRPCRequest = (SDLPutFile *)objc_getAssociatedObject(stream, @"SDLPutFile");
                 [putFileRPCRequest setOffset:[NSNumber numberWithUnsignedInteger:newOffset]];
-                [putFileRPCRequest setLength:[NSNumber numberWithUnsignedInteger:nBytesRead]];
+                [putFileRPCRequest setLength:[NSNumber numberWithUnsignedInteger:(NSUInteger)nBytesRead]];
                 [putFileRPCRequest setBulkData:data];
 
                 [self sendRPC:putFileRPCRequest];

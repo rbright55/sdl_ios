@@ -8,7 +8,8 @@
 
 #import "SDLStreamingMediaLifecycleManager.h"
 
-#import "SDLAbstractProtocol.h"
+#import "SDLAudioStreamManager.h"
+#import "SDLCarWindow.h"
 #import "SDLControlFramePayloadAudioStartServiceAck.h"
 #import "SDLControlFramePayloadConstants.h"
 #import "SDLControlFramePayloadNak.h"
@@ -26,6 +27,7 @@
 #import "SDLLogMacros.h"
 #import "SDLNotificationConstants.h"
 #import "SDLOnHMIStatus.h"
+#import "SDLProtocol.h"
 #import "SDLProtocolMessage.h"
 #import "SDLRegisterAppInterfaceResponse.h"
 #import "SDLRPCNotificationNotification.h"
@@ -72,7 +74,7 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
 @interface SDLStreamingMediaLifecycleManager () <SDLVideoEncoderDelegate>
 
 @property (weak, nonatomic) id<SDLConnectionManagerType> connectionManager;
-@property (weak, nonatomic) SDLAbstractProtocol *protocol;
+@property (weak, nonatomic) SDLProtocol *protocol;
 
 @property (assign, nonatomic, readonly, getter=isAppStateVideoStreamCapable) BOOL appStateVideoStreamCapable;
 @property (assign, nonatomic, readonly, getter=isHmiStateAudioStreamCapable) BOOL hmiStateAudioStreamCapable;
@@ -94,6 +96,9 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
 
 @property (assign, nonatomic) CV_NULLABLE CVPixelBufferRef backgroundingPixelBuffer;
 
+@property (strong, nonatomic, nullable) CADisplayLink *displayLink;
+@property (assign, nonatomic) BOOL useDisplayLink;
+
 @property (assign, nonatomic) CMTime lastPresentationTimestamp;
 
 @end
@@ -111,19 +116,28 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     }
 
     SDLLogV(@"Creating StreamingLifecycleManager");
-    _connectionManager = connectionManager;
 
-    if (@available(iOS 9.0, *)) {
-        if (configuration.window != nil) {
-            _focusableItemManager = [[SDLFocusableItemLocator alloc] initWithWindow:configuration.window connectionManager:_connectionManager];
+    _connectionManager = connectionManager;
+    _videoEncoderSettings = configuration.customVideoEncoderSettings ?: SDLH264VideoEncoder.defaultVideoEncoderSettings;
+
+    if (configuration.rootViewController != nil) {
+        NSAssert(configuration.enableForcedFramerateSync, @"When using CarWindow (rootViewController != nil), forceFrameRateSync must be YES");
+        if (@available(iOS 9.0, *)) {
+            SDLLogD(@"Initializing focusable item locator");
+            _focusableItemManager = [[SDLFocusableItemLocator alloc] initWithViewController:configuration.rootViewController connectionManager:_connectionManager];
         }
+
+        SDLLogD(@"Initializing CarWindow");
+        _carWindow = [[SDLCarWindow alloc] initWithStreamManager:self configuration:configuration];
+        _carWindow.rootViewController = configuration.rootViewController;
     }
 
     _touchManager = [[SDLTouchManager alloc] initWithHitTester:(id)_focusableItemManager];
+    _audioManager = [[SDLAudioStreamManager alloc] initWithManager:self];
 
-    _videoEncoderSettings = configuration.customVideoEncoderSettings ?: SDLH264VideoEncoder.defaultVideoEncoderSettings;
     _requestedEncryptionType = configuration.maximumDesiredEncryption;
     _dataSource = configuration.dataSource;
+    _useDisplayLink = configuration.enableForcedFramerateSync;
     _screenSize = SDLDefaultScreenSize;
     _backgroundingPixelBuffer = NULL;
     _preferredFormatIndex = 0;
@@ -177,7 +191,7 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     [self.videoStreamStateMachine transitionToState:SDLVideoStreamStateStopped];
 }
 
-- (void)startWithProtocol:(SDLAbstractProtocol *)protocol {
+- (void)startWithProtocol:(SDLProtocol *)protocol {
     _protocol = protocol;
 
     if (![self.protocol.protocolDelegateTable containsObject:self]) {
@@ -303,7 +317,11 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
 
     if ([self.videoStreamStateMachine.currentState isEqualToString:SDLVideoStreamStateReady]) {
         [self.videoStreamStateMachine transitionToState:SDLVideoStreamStateSuspended];
+    } else {
+        [self sdl_stopVideoSession];
     }
+    
+    [self sdl_stopAudioSession];
 }
 
 // Per Apple's guidelines: https://developer.apple.com/library/content/documentation/iPhone/Conceptual/iPhoneOSProgrammingGuide/StrategiesforHandlingAppStateTransitions/StrategiesforHandlingAppStateTransitions.html
@@ -311,12 +329,14 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
 - (void)didEnterStateAppActive {
     SDLLogD(@"App became active");
     if (!self.protocol) { return; }
-    
+
     if ([self.videoStreamStateMachine.currentState isEqualToString:SDLVideoStreamStateSuspended]) {
         [self.videoStreamStateMachine transitionToState:SDLVideoStreamStateReady];
     } else {
-        [self tryStartSession];
+        [self sdl_startVideoSession];
     }
+    
+    [self sdl_startAudioSession];
 }
 
 #pragma mark Video Streaming
@@ -340,6 +360,9 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
         _videoEncoder = nil;
     }
 
+    self.displayLink.paused = YES;
+    [self.displayLink invalidate];
+
     [[NSNotificationCenter defaultCenter] postNotificationName:SDLVideoStreamDidStopNotification object:nil];
 }
 
@@ -352,25 +375,24 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
         SDLLogV(@"Capability: %@", capability);
 
         if (capability != nil) {
-            // If we got a response, get our preferred formats and resolutions
+            // If we got a response, get the head unit's preferred formats and resolutions
             weakSelf.preferredFormats = capability.supportedFormats;
             weakSelf.preferredResolutions = @[capability.preferredResolution];
 
             if (weakSelf.dataSource != nil) {
-                SDLLogV(@"Calling data source for modified preferred formats and resolutions");
+                SDLLogV(@"Calling data source for modified preferred formats");
                 weakSelf.preferredFormats = [weakSelf.dataSource preferredVideoFormatOrderFromHeadUnitPreferredOrder:weakSelf.preferredFormats];
-                weakSelf.preferredResolutions = [weakSelf.dataSource resolutionFromHeadUnitPreferredResolution:weakSelf.preferredResolutions.firstObject];
             }
 
             if (weakSelf.focusableItemManager != nil) {
                 weakSelf.focusableItemManager.enableHapticDataRequests = capability.hapticSpatialDataSupported.boolValue;
             }
 
-            SDLLogD(@"Got specialized video capabilites, preferred formats: %@, resolutions: %@ haptics enabled %@", weakSelf.preferredFormats, weakSelf.preferredResolutions, (capability.hapticSpatialDataSupported.boolValue ? @"YES" : @"NO"));
+            SDLLogD(@"Got specialized video capabilites, preferred formats: %@, haptics enabled %@", weakSelf.preferredFormats, (capability.hapticSpatialDataSupported.boolValue ? @"YES" : @"NO"));
         } else {
-            // If we can't get capabilities, we're assuming it's H264 RAW at whatever the display capabilities said in the RAIR. We also aren't going to call the data source because they have no options.
+            // If no response, assume that the format is H264 RAW and get the screen resolution from the RAI response's display capabilities.
             SDLVideoStreamingFormat *format = [[SDLVideoStreamingFormat alloc] initWithCodec:SDLVideoStreamingCodecH264 protocol:SDLVideoStreamingProtocolRAW];
-            SDLImageResolution *resolution = [[SDLImageResolution alloc] initWithWidth:weakSelf.screenSize.width height:weakSelf.screenSize.height];
+            SDLImageResolution *resolution = [[SDLImageResolution alloc] initWithWidth:(uint16_t)weakSelf.screenSize.width height:(uint16_t)weakSelf.screenSize.height];
             weakSelf.preferredFormats = @[format];
             weakSelf.preferredResolutions = @[resolution];
 
@@ -381,13 +403,19 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
             SDLLogD(@"Using generic video capabilites, preferred formats: %@, resolutions: %@, haptics disabled", weakSelf.preferredFormats, weakSelf.preferredResolutions);
         }
 
+        if (weakSelf.dataSource != nil) {
+            SDLLogV(@"Calling data source for modified preferred resolutions");
+            weakSelf.preferredResolutions = [weakSelf.dataSource resolutionFromHeadUnitPreferredResolution:weakSelf.preferredResolutions.firstObject];
+            SDLLogD(@"Got specialized video resolutions: %@", weakSelf.preferredResolutions);
+        }
+
         [self sdl_sendVideoStartService];
     }];
 }
 
 - (void)didEnterStateVideoStreamReady {
     SDLLogD(@"Video stream ready");
-    
+
     if (self.videoEncoder != nil) {
         [self.videoEncoder stop];
         self.videoEncoder = nil;
@@ -420,18 +448,35 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     }
 
     [[NSNotificationCenter defaultCenter] postNotificationName:SDLVideoStreamDidStartNotification object:nil];
+
+    if (self.useDisplayLink) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            // And start up the displayLink
+            NSInteger targetFramerate = ((NSNumber *)self.videoEncoderSettings[(__bridge NSString *)kVTCompressionPropertyKey_ExpectedFrameRate]).integerValue;
+            SDLLogD(@"Initializing CADisplayLink with framerate: %ld", (long)targetFramerate);
+            self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(sdl_displayLinkFired:)];
+            if (@available(iOS 10, *)) {
+                self.displayLink.preferredFramesPerSecond = targetFramerate;
+            } else {
+                self.displayLink.frameInterval = (60 / targetFramerate);
+            }
+            [self.displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
+        });
+    } else {
+        self.touchManager.enableSyncedPanning = NO;
+    }
 }
 
 - (void)didEnterStateVideoStreamSuspended {
+    SDLLogD(@"Video stream suspended");
     
+    [[NSNotificationCenter defaultCenter] postNotificationName:SDLVideoStreamSuspendedNotification object:nil];
 }
 
 - (void)didEnterStateVideoStreamShuttingDown {
     SDLLogD(@"Video stream shutting down");
 
     [self.protocol endServiceWithType:SDLServiceTypeVideo];
-    
-    [self.videoStreamStateMachine transitionToState:SDLVideoStreamStateStopped];
 }
 
 #pragma mark Audio
@@ -473,8 +518,6 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
 - (void)didEnterStateAudioStreamShuttingDown {
     SDLLogD(@"Audio stream shutting down");
     [self.protocol endServiceWithType:SDLServiceTypeAudio];
-    
-    [self.audioStreamStateMachine transitionToState:SDLAudioStreamStateStopped];
 }
 
 #pragma mark - SDLProtocolListener
@@ -500,7 +543,7 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     SDLLogV(@"ACK: %@", audioAckPayload);
 
     if (audioAckPayload.mtu != SDLControlFrameInt64NotFound) {
-        [[SDLGlobals sharedGlobals] setDynamicMTUSize:audioAckPayload.mtu forServiceType:SDLServiceTypeAudio];
+        [[SDLGlobals sharedGlobals] setDynamicMTUSize:(NSUInteger)audioAckPayload.mtu forServiceType:SDLServiceTypeAudio];
     }
 
     [self.audioStreamStateMachine transitionToState:SDLAudioStreamStateReady];
@@ -514,12 +557,20 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     SDLLogV(@"ACK: %@", videoAckPayload);
 
     if (videoAckPayload.mtu != SDLControlFrameInt64NotFound) {
-        [[SDLGlobals sharedGlobals] setDynamicMTUSize:videoAckPayload.mtu forServiceType:SDLServiceTypeVideo];
+        [[SDLGlobals sharedGlobals] setDynamicMTUSize:(NSUInteger)videoAckPayload.mtu forServiceType:SDLServiceTypeVideo];
     }
 
     // This is the definitive screen size that will be used
     if (videoAckPayload.height != SDLControlFrameInt32NotFound && videoAckPayload.width != SDLControlFrameInt32NotFound) {
         _screenSize = CGSizeMake(videoAckPayload.width, videoAckPayload.height);
+    } else if (self.preferredResolutions.count > 0) {
+        // If a preferred resolution was set, use the first option to set the screen size
+        SDLImageResolution *preferredResolution = self.preferredResolutions.firstObject;
+        CGSize newScreenSize = CGSizeMake(preferredResolution.resolutionWidth.floatValue, preferredResolution.resolutionHeight.floatValue);
+        if (!CGSizeEqualToSize(self.screenSize, newScreenSize)) {
+            SDLLogW(@"The preferred resolution does not match the screen dimensions returned by the Register App Interface Response. Video may look distorted or video may not show up on the head unit");
+            _screenSize = CGSizeMake(preferredResolution.resolutionWidth.floatValue, preferredResolution.resolutionHeight.floatValue);
+        }
     } // else we are using the screen size we got from the RAIR earlier
 
     // Figure out the definitive format that will be used. If the protocol / codec weren't passed in the payload, it's probably a system that doesn't support those properties, which also means it's a system that requires H.264 RAW encoding
@@ -664,8 +715,17 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     SDLLogD(@"HMI level changed from level %@ to level %@", self.hmiLevel, hmiStatus.hmiLevel);
     self.hmiLevel = hmiStatus.hmiLevel;
 
-    [self tryStartSession];
-    
+    if (self.isHmiStateVideoStreamCapable) {
+        [self sdl_startVideoSession];
+    } else {
+        [self sdl_stopVideoSession];
+    }
+
+    if (self.isHmiStateAudioStreamCapable) {
+        [self sdl_startAudioSession];
+    } else {
+        [self sdl_stopAudioSession];
+    }
 }
 
 - (void)sdl_permissionsChange:(SDLRPCNotificationNotification *)notification {
@@ -705,8 +765,7 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
         return;
     }
 
-    if ([self.videoStreamStateMachine isCurrentState:SDLVideoStreamStateStopped]
-          && self.isHmiStateVideoStreamCapable) {
+    if ([self.videoStreamStateMachine isCurrentState:SDLVideoStreamStateStopped] && self.isHmiStateVideoStreamCapable) {
         [self.videoStreamStateMachine transitionToState:SDLVideoStreamStateStarting];
     } else {
         SDLLogE(@"Unable to send video start service request\n"
@@ -763,6 +822,18 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     }
 }
 
+- (void)sdl_displayLinkFired:(CADisplayLink *)displayLink {
+    NSAssert([NSThread isMainThread], @"Display link should always fire on the main thread");
+    if (@available(iOS 10.0, *)) {
+        SDLLogV(@"DisplayLink frame fired, duration: %f, last frame timestamp: %f, target timestamp: %f", displayLink.duration, displayLink.timestamp, displayLink.targetTimestamp);
+    } else {
+        SDLLogV(@"DisplayLink frame fired, duration: %f, last frame timestamp: %f, target timestamp: (not available)", displayLink.duration, displayLink.timestamp);
+    }
+
+    [self.touchManager syncFrame];
+    [self.carWindow syncFrame];
+}
+
 - (void)sdl_sendBackgroundFrames {
     SDLLogV(@"Attempting to send background frames");
     if (!self.backgroundingPixelBuffer) {
@@ -795,7 +866,7 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     SDLLogD(@"Requesting video capabilities");
     SDLGetSystemCapability *getVideoCapabilityRequest = [[SDLGetSystemCapability alloc] initWithType:SDLSystemCapabilityTypeVideoStreaming];
 
-    [self.connectionManager sendManagerRequest:getVideoCapabilityRequest withResponseHandler:^(__kindof SDLRPCRequest * _Nullable request, __kindof SDLRPCResponse * _Nullable response, NSError * _Nullable error) {
+    [self.connectionManager sendConnectionManagerRequest:getVideoCapabilityRequest withResponseHandler:^(__kindof SDLRPCRequest * _Nullable request, __kindof SDLRPCResponse * _Nullable response, NSError * _Nullable error) {
         if (!response.success || [response isMemberOfClass:SDLGenericResponse.class]) {
             SDLLogW(@"Video capabilities response failed: %@", error);
             responseHandler(nil);
@@ -825,7 +896,7 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     // If this fails we have no known formats to use
     if (self.preferredFormatIndex >= self.preferredFormats.count
         || self.preferredResolutionIndex >= self.preferredResolutions.count) {
-        SDLLogE(@"No preferred format or no preferred resolution found that works: format index %lu, resolution index %lu", self.preferredFormatIndex, self.preferredResolutionIndex);
+        SDLLogE(@"No preferred format or no preferred resolution found that works: format index %lu, resolution index %lu", (unsigned long)self.preferredFormatIndex, (unsigned long)self.preferredResolutionIndex);
         [self sdl_transitionToStoppedState:SDLServiceTypeVideo];
         return;
     }
@@ -903,15 +974,24 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     return [UIFont boldSystemFontOfSize:fontSize];
 }
 
+#pragma mark Setters / Getters
 
-#pragma mark Getters
+- (void)setRootViewController:(UIViewController *)rootViewController {
+    if (self.focusableItemManager != nil) {
+        self.focusableItemManager.viewController = rootViewController;
+    }
+
+    if (self.carWindow != nil) {
+        self.carWindow.rootViewController = rootViewController;
+    }
+}
 
 - (BOOL)isAppStateVideoStreamCapable {
     return [self.appStateMachine isCurrentState:SDLAppStateActive];
 }
 
 - (BOOL)isHmiStateAudioStreamCapable {
-    return YES;
+    return [self.hmiLevel isEqualToEnum:SDLHMILevelLimited] || [self.hmiLevel isEqualToEnum:SDLHMILevelFull];
 }
 
 - (BOOL)isHmiStateVideoStreamCapable {

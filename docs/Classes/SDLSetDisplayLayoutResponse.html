@@ -11,7 +11,7 @@
 
 <h3>Overview</h3>
 
-<p>Set Display Layout Response is sent, when SetDisplayLayout has been called</p>
+<p>Response to SDLSetDisplayLayout</p>
 
 <p>Since SmartDeviceLink 2.0</p>
 
@@ -21,16 +21,17 @@
       displayCapabilities
   </h3>
   
-  <p>Undocumented</p>
+  <p>The display capabilities of the new template layout</p>
 
   
   
   <h4>Objective-C</h4>
-  <pre class="highlight"><code><span class="k">@property</span> <span class="p">(</span><span class="n">nullable</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n"><a href="../Classes/SDLDisplayCapabilities.html">SDLDisplayCapabilities</a></span> <span class="o">*</span><span class="n">displayCapabilities</span></code></pre>
+  <pre class="highlight objective_c"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">,</span> <span class="n">nullable</span><span class="p">)</span>
+    <span class="n"><a href="../Classes/SDLDisplayCapabilities.html">SDLDisplayCapabilities</a></span> <span class="o">*</span><span class="n">displayCapabilities</span><span class="p">;</span></code></pre>
 
   
   <h4>Swift</h4>
-  <pre class="highlight"><code><span class="k">var</span> <span class="nv">displayCapabilities</span><span class="p">:</span> <span class="kt"><a href="../Classes/SDLDisplayCapabilities.html">SDLDisplayCapabilities</a></span><span class="p">?</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+  <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">displayCapabilities</span><span class="p">:</span> <span class="kt"><a href="../Classes/SDLDisplayCapabilities.html">SDLDisplayCapabilities</a></span><span class="p">?</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
 
   
   
@@ -39,16 +40,17 @@
       buttonCapabilities
   </h3>
   
-  <p>Undocumented</p>
+  <p>The button capabilities of the new template layout</p>
 
   
   
   <h4>Objective-C</h4>
-  <pre class="highlight"><code><span class="k">@property</span> <span class="p">(</span><span class="n">nullable</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">NSArray</span><span class="o">&lt;</span><span class="n"><a href="../Classes/SDLButtonCapabilities.html">SDLButtonCapabilities</a></span> <span class="o">*&gt;</span> <span class="o">*</span><span class="n">buttonCapabilities</span></code></pre>
+  <pre class="highlight objective_c"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">,</span> <span class="n">nullable</span><span class="p">)</span>
+    <span class="n">NSArray</span><span class="o">&lt;</span><span class="n"><a href="../Classes/SDLButtonCapabilities.html">SDLButtonCapabilities</a></span> <span class="o">*&gt;</span> <span class="o">*</span><span class="n">buttonCapabilities</span><span class="p">;</span></code></pre>
 
   
   <h4>Swift</h4>
-  <pre class="highlight"><code><span class="k">var</span> <span class="nv">buttonCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLButtonCapabilities.html">SDLButtonCapabilities</a></span><span class="p">]?</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+  <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">buttonCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLButtonCapabilities.html">SDLButtonCapabilities</a></span><span class="p">]?</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
 
   
   
@@ -57,16 +59,17 @@
       softButtonCapabilities
   </h3>
   
-  <p>Undocumented</p>
+  <p>The soft button capabilities of the new template layout</p>
 
   
   
   <h4>Objective-C</h4>
-  <pre class="highlight"><code><span class="k">@property</span> <span class="p">(</span><span class="n">nullable</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n">NSArray</span><span class="o">&lt;</span><span class="n"><a href="../Classes/SDLSoftButtonCapabilities.html">SDLSoftButtonCapabilities</a></span> <span class="o">*&gt;</span> <span class="o">*</span><span class="n">softButtonCapabilities</span></code></pre>
+  <pre class="highlight objective_c"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">,</span> <span class="n">nullable</span><span class="p">)</span>
+    <span class="n">NSArray</span><span class="o">&lt;</span><span class="n"><a href="../Classes/SDLSoftButtonCapabilities.html">SDLSoftButtonCapabilities</a></span> <span class="o">*&gt;</span> <span class="o">*</span><span class="n">softButtonCapabilities</span><span class="p">;</span></code></pre>
 
   
   <h4>Swift</h4>
-  <pre class="highlight"><code><span class="k">var</span> <span class="nv">softButtonCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLSoftButtonCapabilities.html">SDLSoftButtonCapabilities</a></span><span class="p">]?</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+  <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">softButtonCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLSoftButtonCapabilities.html">SDLSoftButtonCapabilities</a></span><span class="p">]?</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
 
   
   
@@ -75,16 +78,17 @@
       presetBankCapabilities
   </h3>
   
-  <p>Undocumented</p>
+  <p>The preset bank capabilities of the new template layout</p>
 
   
   
   <h4>Objective-C</h4>
-  <pre class="highlight"><code><span class="k">@property</span> <span class="p">(</span><span class="n">nullable</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">)</span> <span class="n"><a href="../Classes/SDLPresetBankCapabilities.html">SDLPresetBankCapabilities</a></span> <span class="o">*</span><span class="n">presetBankCapabilities</span></code></pre>
+  <pre class="highlight objective_c"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">,</span> <span class="n">nullable</span><span class="p">)</span>
+    <span class="n"><a href="../Classes/SDLPresetBankCapabilities.html">SDLPresetBankCapabilities</a></span> <span class="o">*</span><span class="n">presetBankCapabilities</span><span class="p">;</span></code></pre>
 
   
   <h4>Swift</h4>
-  <pre class="highlight"><code><span class="k">var</span> <span class="nv">presetBankCapabilities</span><span class="p">:</span> <span class="kt"><a href="../Classes/SDLPresetBankCapabilities.html">SDLPresetBankCapabilities</a></span><span class="p">?</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+  <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">presetBankCapabilities</span><span class="p">:</span> <span class="kt"><a href="../Classes/SDLPresetBankCapabilities.html">SDLPresetBankCapabilities</a></span><span class="p">?</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
 
   
   

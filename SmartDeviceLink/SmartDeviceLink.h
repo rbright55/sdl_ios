@@ -9,33 +9,6 @@ FOUNDATION_EXPORT double SmartDeviceLinkVersionNumber;
 //! Project version string for SmartDeviceLink.
 FOUNDATION_EXPORT const unsigned char SmartDeviceLinkVersionString[];
 
-/***** Proxy *****/
-#import "SDLProxy.h"
-#import "SDLProxyFactory.h"
-#import "SDLProxyListener.h"
-#import "SDLSecurityType.h"
-#import "SDLStreamingMediaManager.h"
-#import "SDLTouchManager.h"
-#import "SDLTouchManagerDelegate.h"
-
-/***** Transport *****/
-#import "SDLAbstractTransport.h"
-#import "SDLIAPSessionDelegate.h"
-#import "SDLIAPTransport.h"
-#import "SDLTCPTransport.h"
-#import "SDLTransportDelegate.h"
-
-/***** Protocol *****/
-#import "SDLAbstractProtocol.h"
-#import "SDLProtocol.h"
-#import "SDLProtocolListener.h"
-
-// Header
-#import "SDLProtocolHeader.h"
-
-// Message
-#import "SDLProtocolMessage.h"
-
 /***** RPCs *****/
 // Superclasses
 #import "SDLEnum.h"
@@ -319,8 +292,20 @@ FOUNDATION_EXPORT const unsigned char SmartDeviceLinkVersionString[];
 // Configurations
 #import "SDLConfiguration.h"
 #import "SDLLifecycleConfiguration.h"
+#import "SDLLifecycleConfigurationUpdate.h"
 #import "SDLLockScreenConfiguration.h"
 #import "SDLStreamingMediaConfiguration.h"
+
+// Streaming
+#import "SDLAudioStreamManager.h"
+#import "SDLAudioStreamManagerDelegate.h"
+#import "SDLCarWindowViewController.h"
+#import "SDLStreamingAudioManagerType.h"
+#import "SDLStreamingMediaManager.h"
+#import "SDLTouchManager.h"
+#import "SDLTouchManagerDelegate.h"
+#import "SDLSecurityType.h"
+#import "SDLStreamingMediaManagerDataSource.h"
 
 // Files
 #import "SDLArtwork.h"
@@ -335,9 +320,20 @@ FOUNDATION_EXPORT const unsigned char SmartDeviceLinkVersionString[];
 #import "SDLManager.h"
 #import "SDLManagerDelegate.h"
 
+// System Capabilities
+#import "SDLSystemCapabilityManager.h"
+
 // Permissions
 #import "SDLPermissionConstants.h"
 #import "SDLPermissionManager.h"
+
+// Screen
+#import "SDLScreenManager.h"
+#import "SDLSoftButtonObject.h"
+#import "SDLSoftButtonState.h"
+
+#import "SDLMenuCell.h"
+#import "SDLVoiceCommand.h"
 
 // Touches
 #import "SDLPinchGesture.h"

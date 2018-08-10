@@ -19,6 +19,9 @@ NS_ASSUME_NONNULL_BEGIN
 typedef NSString SDLErrorDomain;
 extern SDLErrorDomain *const SDLErrorDomainLifecycleManager;
 extern SDLErrorDomain *const SDLErrorDomainFileManager;
+extern SDLErrorDomain *const SDLErrorDomainTextAndGraphicManager;
+extern SDLErrorDomain *const SDLErrorDomainSoftButtonManager;
+extern SDLErrorDomain *const SDLErrorDomainMenuManager;
 
 @interface NSError (SDLErrors)
 
@@ -32,6 +35,7 @@ extern SDLErrorDomain *const SDLErrorDomainFileManager;
 + (NSError *)sdl_lifecycle_startedWithBadResult:(SDLResult)result info:(NSString *)info;
 + (NSError *)sdl_lifecycle_startedWithWarning:(SDLResult)result info:(NSString *)info;
 + (NSError *)sdl_lifecycle_failedWithBadResult:(SDLResult)result info:(NSString *)info;
++ (NSError *)sdl_lifecycle_multipleRequestsCancelled;
 
 #pragma mark SDLFileManager
 
@@ -43,6 +47,16 @@ extern SDLErrorDomain *const SDLErrorDomainFileManager;
 + (NSError *)sdl_fileManager_unableToDelete_ErrorWithUserInfo:(NSDictionary *)userInfo;
 + (NSError *)sdl_fileManager_fileDoesNotExistError;
 + (NSError *)sdl_fileManager_fileUploadCanceled;
++ (NSError *)sdl_fileManager_dataMissingError;
+
+#pragma mark Show Managers
+
++ (NSError *)sdl_softButtonManager_pendingUpdateSuperseded;
++ (NSError *)sdl_textAndGraphicManager_pendingUpdateSuperseded;
+
+#pragma mark Menu Manager
+
++ (NSError *)sdl_menuManager_failedToUpdateWithDictionary:(NSDictionary *)userInfo;
 
 @end
 
@@ -51,6 +65,8 @@ extern SDLErrorDomain *const SDLErrorDomainFileManager;
 + (NSException *)sdl_missingHandlerException;
 + (NSException *)sdl_missingIdException;
 + (NSException *)sdl_missingFilesException;
++ (NSException *)sdl_invalidSoftButtonStateException;
++ (NSException *)sdl_carWindowOrientationException;
 
 @end
 

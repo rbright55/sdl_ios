@@ -11,7 +11,7 @@
 
 <h3>Overview</h3>
 
-<p>Undocumented</p>
+<p>Capabilities of the remote control feature</p>
 
 
 <section class="section task-group-section">
@@ -24,11 +24,11 @@
   
   
   <h4>Objective-C</h4>
-  <pre class="highlight"><code><span class="k">-</span> <span class="p">(</span><span class="n">instancetype</span><span class="p">)</span><span class="nf">initWithClimateControlCapabilities</span><span class="p">:(</span><span class="n">nullable</span> <span class="n">NSArray</span><span class="o">&lt;</span><span class="n"><a href="../Classes/SDLClimateControlCapabilities.html">SDLClimateControlCapabilities</a></span> <span class="o">*&gt;</span> <span class="o">*</span><span class="p">)</span><span class="nv">climateControlCapabilities</span> <span class="nf">radioControlCapabilities</span><span class="p">:(</span><span class="n">nullable</span> <span class="n">NSArray</span><span class="o">&lt;</span><span class="n"><a href="../Classes/SDLRadioControlCapabilities.html">SDLRadioControlCapabilities</a></span> <span class="o">*&gt;</span> <span class="o">*</span><span class="p">)</span><span class="nv">radioControlCapabilities</span> <span class="nf">buttonCapabilities</span><span class="p">:(</span><span class="n">nullable</span> <span class="n">NSArray</span><span class="o">&lt;</span><span class="n"><a href="../Classes/SDLButtonCapabilities.html">SDLButtonCapabilities</a></span> <span class="o">*&gt;</span> <span class="o">*</span><span class="p">)</span><span class="nv">buttonCapabilities</span><span class="p">;</span></code></pre>
+  <pre class="highlight objective_c"><code><span class="k">-</span> <span class="p">(</span><span class="n">instancetype</span><span class="p">)</span><span class="nf">initWithClimateControlCapabilities</span><span class="p">:(</span><span class="n">nullable</span> <span class="n">NSArray</span><span class="o">&lt;</span><span class="n"><a href="../Classes/SDLClimateControlCapabilities.html">SDLClimateControlCapabilities</a></span> <span class="o">*&gt;</span> <span class="o">*</span><span class="p">)</span><span class="nv">climateControlCapabilities</span> <span class="nf">radioControlCapabilities</span><span class="p">:(</span><span class="n">nullable</span> <span class="n">NSArray</span><span class="o">&lt;</span><span class="n"><a href="../Classes/SDLRadioControlCapabilities.html">SDLRadioControlCapabilities</a></span> <span class="o">*&gt;</span> <span class="o">*</span><span class="p">)</span><span class="nv">radioControlCapabilities</span> <span class="nf">buttonCapabilities</span><span class="p">:(</span><span class="n">nullable</span> <span class="n">NSArray</span><span class="o">&lt;</span><span class="n"><a href="../Classes/SDLButtonCapabilities.html">SDLButtonCapabilities</a></span> <span class="o">*&gt;</span> <span class="o">*</span><span class="p">)</span><span class="nv">buttonCapabilities</span><span class="p">;</span></code></pre>
 
   
   <h4>Swift</h4>
-  <pre class="highlight"><code><span class="nf">init</span><span class="p">(</span><span class="nv">climateControlCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLClimateControlCapabilities.html">SDLClimateControlCapabilities</a></span><span class="p">]?,</span> <span class="nv">radioControlCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLRadioControlCapabilities.html">SDLRadioControlCapabilities</a></span><span class="p">]?,</span> <span class="nv">buttonCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLButtonCapabilities.html">SDLButtonCapabilities</a></span><span class="p">]?)</span></code></pre>
+  <pre class="highlight swift"><code><span class="nf">init</span><span class="p">(</span><span class="nv">climateControlCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLClimateControlCapabilities.html">SDLClimateControlCapabilities</a></span><span class="p">]?,</span> <span class="nv">radioControlCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLRadioControlCapabilities.html">SDLRadioControlCapabilities</a></span><span class="p">]?,</span> <span class="nv">buttonCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLButtonCapabilities.html">SDLButtonCapabilities</a></span><span class="p">]?)</span></code></pre>
 
   
   
@@ -37,7 +37,7 @@
       climateControlCapabilities
   </h3>
   
-  <p>@abstract If included, the platform supports RC climate controls.
+  <p>If included, the platform supports RC climate controls.
  For this baseline version, maxsize=1. i.e. only one climate control module is supported.</p>
 
 <p>Optional, Array of SDLClimateControlCapabilities, Array length 1 - 100</p>
@@ -45,12 +45,12 @@
   
   
   <h4>Objective-C</h4>
-  <pre class="highlight"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">,</span> <span class="n">nullable</span><span class="p">)</span>
+  <pre class="highlight objective_c"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">,</span> <span class="n">nullable</span><span class="p">)</span>
     <span class="n">NSArray</span><span class="o">&lt;</span><span class="n"><a href="../Classes/SDLClimateControlCapabilities.html">SDLClimateControlCapabilities</a></span> <span class="o">*&gt;</span> <span class="o">*</span><span class="n">climateControlCapabilities</span><span class="p">;</span></code></pre>
 
   
   <h4>Swift</h4>
-  <pre class="highlight"><code><span class="k">var</span> <span class="nv">climateControlCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLClimateControlCapabilities.html">SDLClimateControlCapabilities</a></span><span class="p">]?</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+  <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">climateControlCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLClimateControlCapabilities.html">SDLClimateControlCapabilities</a></span><span class="p">]?</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
 
   
   
@@ -59,7 +59,7 @@
       radioControlCapabilities
   </h3>
   
-  <p>@abstract If included, the platform supports RC radio controls.
+  <p>If included, the platform supports RC radio controls.
  For this baseline version, maxsize=1. i.e. only one radio control module is supported.</p>
 
 <p>Optional, Array of SDLRadioControlCapabilities, Array length 1 - 100</p>
@@ -67,12 +67,12 @@
   
   
   <h4>Objective-C</h4>
-  <pre class="highlight"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">,</span> <span class="n">nullable</span><span class="p">)</span>
+  <pre class="highlight objective_c"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">,</span> <span class="n">nullable</span><span class="p">)</span>
     <span class="n">NSArray</span><span class="o">&lt;</span><span class="n"><a href="../Classes/SDLRadioControlCapabilities.html">SDLRadioControlCapabilities</a></span> <span class="o">*&gt;</span> <span class="o">*</span><span class="n">radioControlCapabilities</span><span class="p">;</span></code></pre>
 
   
   <h4>Swift</h4>
-  <pre class="highlight"><code><span class="k">var</span> <span class="nv">radioControlCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLRadioControlCapabilities.html">SDLRadioControlCapabilities</a></span><span class="p">]?</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+  <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">radioControlCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLRadioControlCapabilities.html">SDLRadioControlCapabilities</a></span><span class="p">]?</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
 
   
   
@@ -81,19 +81,19 @@
       buttonCapabilities
   </h3>
   
-  <p>@abstract If included, the platform supports RC button controls with the included button names.</p>
+  <p>If included, the platform supports RC button controls with the included button names.</p>
 
 <p>Optional, Array of SDLButtonCapabilities, Array length 1 - 100</p>
 
   
   
   <h4>Objective-C</h4>
-  <pre class="highlight"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">,</span> <span class="n">nullable</span><span class="p">)</span>
+  <pre class="highlight objective_c"><code><span class="k">@property</span> <span class="p">(</span><span class="n">readwrite</span><span class="p">,</span> <span class="n">strong</span><span class="p">,</span> <span class="n">nonatomic</span><span class="p">,</span> <span class="n">nullable</span><span class="p">)</span>
     <span class="n">NSArray</span><span class="o">&lt;</span><span class="n"><a href="../Classes/SDLButtonCapabilities.html">SDLButtonCapabilities</a></span> <span class="o">*&gt;</span> <span class="o">*</span><span class="n">buttonCapabilities</span><span class="p">;</span></code></pre>
 
   
   <h4>Swift</h4>
-  <pre class="highlight"><code><span class="k">var</span> <span class="nv">buttonCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLButtonCapabilities.html">SDLButtonCapabilities</a></span><span class="p">]?</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
+  <pre class="highlight swift"><code><span class="k">var</span> <span class="nv">buttonCapabilities</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Classes/SDLButtonCapabilities.html">SDLButtonCapabilities</a></span><span class="p">]?</span> <span class="p">{</span> <span class="k">get</span> <span class="k">set</span> <span class="p">}</span></code></pre>
 
   
   
