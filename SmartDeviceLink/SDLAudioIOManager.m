@@ -1,11 +1,12 @@
 //
-//  SDLWazeAudioManager.h
+//  SDLAudioIOManager.h
 //  Created by Kujtim Shala on 05/25/18.
 //
 
-#import "SDLWazeAudioManager.h"
+#import "SDLAudioIOManager.h"
 
 #import <SmartDeviceLink/SmartDeviceLink.h>
+#import "SDLAudioIOManagerDelegate.h"
 
 /** Amplifier const settings */
 #define INPUT_STREAM_AMPLIFIER_FACTOR_MAX (50.0)
@@ -13,34 +14,34 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-NSString *const SDLErrorDomainWazeAudioManager = @"com.sdl.extension.WazeAudioManager";
+NSString *const SDLErrorDomainAudioIOManager = @"com.sdl.extension.AudioIOManager";
 
-typedef NS_ENUM(NSInteger, SDLWazeAudioManagerError) {
-    SDLWazeAudioManagerErrorNotConnected = -1
+typedef NS_ENUM(NSInteger, SDLAudioIOManagerError) {
+    SDLAudioIOManagerErrorNotConnected = -1
 };
 
-typedef NS_ENUM(NSInteger, SDLWazeAudioManagerState) {
-    SDLWazeAudioManagerStateStopped = 0,
-    SDLWazeAudioManagerStateStarting = 1,
-    SDLWazeAudioManagerStateStarted = 2,
-    SDLWazeAudioManagerStateStopping = 3,
-    SDLWazeAudioManagerStatePausing = 4, // only for inputstream. it'll be paused when active and output stream starts
-    SDLWazeAudioManagerStatePaused = 5, // only for inputstream while output stream is playing
+typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
+    SDLAudioIOManagerStateStopped = 0,
+    SDLAudioIOManagerStateStarting = 1,
+    SDLAudioIOManagerStateStarted = 2,
+    SDLAudioIOManagerStateStopping = 3,
+    SDLAudioIOManagerStatePausing = 4, // only for inputstream. it'll be paused when active and output stream starts
+    SDLAudioIOManagerStatePaused = 5, // only for inputstream while output stream is playing
 };
 
-@interface SDLWazeAudioManager () <SDLAudioStreamManagerDelegate>
+@interface SDLAudioIOManager () <SDLAudioStreamManagerDelegate>
 
-@property (assign, nonatomic) SDLWazeAudioManagerState outputStreamState;
-@property (assign, nonatomic) SDLWazeAudioManagerState inputStreamState;
+@property (assign, nonatomic) SDLAudioIOManagerState outputStreamState;
+@property (assign, nonatomic) SDLAudioIOManagerState inputStreamState;
 
 @property (strong, nonatomic, nullable) SDLAudioPassThruCapabilities *inputStreamOptions;
 @property (assign, nonatomic) double inputStreamAmplifierFactor;
 
 @end
 
-@implementation SDLWazeAudioManager
+@implementation SDLAudioIOManager
 
-- (instancetype)initWithManager:(SDLManager *)sdlManager delegate:(id<SDLWazeAudioManagerDelegate>)delegate {
+- (instancetype)initWithManager:(SDLManager *)sdlManager delegate:(id<SDLAudioIOManagerDelegate>)delegate {
     self = [super init];
     if (!self) { return nil; }
 
@@ -49,8 +50,8 @@ typedef NS_ENUM(NSInteger, SDLWazeAudioManagerState) {
     self.sdlManager = sdlManager;
     self.sdlManager.streamManager.audioManager.delegate = self;
 
-    self.outputStreamState = SDLWazeAudioManagerStateStopped;
-    self.inputStreamState = SDLWazeAudioManagerStateStopped;
+    self.outputStreamState = SDLAudioIOManagerStateStopped;
+    self.inputStreamState = SDLAudioIOManagerStateStopped;
     
     self.inputStreamOptions = nil;
     self.inputStreamAmplifierFactor = 0;
@@ -59,11 +60,11 @@ typedef NS_ENUM(NSInteger, SDLWazeAudioManagerState) {
 }
 
 - (BOOL)isOutputStreamPlaying {
-    return self.outputStreamState != SDLWazeAudioManagerStateStopped;
+    return self.outputStreamState != SDLAudioIOManagerStateStopped;
 }
 
 - (BOOL)isInputStreamPlaying {
-    return self.inputStreamState != SDLWazeAudioManagerStateStopped;
+    return self.inputStreamState != SDLAudioIOManagerStateStopped;
 }
 
 #pragma mark- Output stream area
@@ -72,18 +73,18 @@ typedef NS_ENUM(NSInteger, SDLWazeAudioManagerState) {
     // push the audio file to the underlying manager
     [self.sdlManager.streamManager.audioManager pushWithFileURL:fileURL];
     
-    if (self.outputStreamState == SDLWazeAudioManagerStateStopped) {
-        self.outputStreamState = SDLWazeAudioManagerStateStarting;
+    if (self.outputStreamState == SDLAudioIOManagerStateStopped) {
+        self.outputStreamState = SDLAudioIOManagerStateStarting;
 
         // in case the input stream is active we have to get it to pause (acutally is stopped but it's an extra case)
-        if (self.inputStreamState == SDLWazeAudioManagerStateStarting || self.inputStreamState == SDLWazeAudioManagerStateStarted) {
+        if (self.inputStreamState == SDLAudioIOManagerStateStarting || self.inputStreamState == SDLAudioIOManagerStateStarted) {
             // we should pause the playback and wait for being called again.
             [self sdl_pauseInputStream];
             return;
         }
     
         // in case the input stream is stopping or pausing we will return here and wait until it's fully paused or stopped (there we will start the stream)
-        if (self.inputStreamState == SDLWazeAudioManagerStateStopping || self.inputStreamState == SDLWazeAudioManagerStatePausing) {
+        if (self.inputStreamState == SDLAudioIOManagerStateStopping || self.inputStreamState == SDLAudioIOManagerStatePausing) {
             return;
         }
     }
@@ -92,8 +93,8 @@ typedef NS_ENUM(NSInteger, SDLWazeAudioManagerState) {
 }
 
 - (void)sdl_startOutputStream {
-    if (self.outputStreamState == SDLWazeAudioManagerStateStarting) {
-        self.outputStreamState = SDLWazeAudioManagerStateStarted;
+    if (self.outputStreamState == SDLAudioIOManagerStateStarting) {
+        self.outputStreamState = SDLAudioIOManagerStateStarted;
         
         if ([self.delegate respondsToSelector:@selector(audioManagerDidStartOutputStream:)]) {
             [self.delegate audioManagerDidStartOutputStream:self];
@@ -110,14 +111,14 @@ typedef NS_ENUM(NSInteger, SDLWazeAudioManagerState) {
         [audioManager playNextWhenReady];
     } else {
         // queue is now empty. stop the output stream
-        self.outputStreamState = SDLWazeAudioManagerStateStopped;
+        self.outputStreamState = SDLAudioIOManagerStateStopped;
         
         if ([self.delegate respondsToSelector:@selector(audioManagerDidStopOutputStream:)]) {
             [self.delegate audioManagerDidStopOutputStream:self];
         }
         
         // possible that the input stream is paused. resume it
-        if (self.inputStreamState == SDLWazeAudioManagerStatePaused) {
+        if (self.inputStreamState == SDLAudioIOManagerStatePaused) {
             [self sdl_startInputStream];
         }
     }
@@ -142,24 +143,24 @@ typedef NS_ENUM(NSInteger, SDLWazeAudioManagerState) {
 #pragma mark- Input stream area
 
 - (void)startInputStream {
-    if (self.inputStreamState != SDLWazeAudioManagerStateStopped && self.inputStreamState != SDLWazeAudioManagerStatePaused) {
+    if (self.inputStreamState != SDLAudioIOManagerStateStopped && self.inputStreamState != SDLAudioIOManagerStatePaused) {
         return;
     }
     
-    if (self.outputStreamState != SDLWazeAudioManagerStateStopped) {
-        self.inputStreamState = SDLWazeAudioManagerStatePaused;
+    if (self.outputStreamState != SDLAudioIOManagerStateStopped) {
+        self.inputStreamState = SDLAudioIOManagerStatePaused;
     } else {
         [self sdl_startInputStream];
     }
 }
 
 - (void)sdl_startInputStream {
-    if (self.inputStreamState != SDLWazeAudioManagerStateStopped && self.inputStreamState != SDLWazeAudioManagerStatePaused) {
+    if (self.inputStreamState != SDLAudioIOManagerStateStopped && self.inputStreamState != SDLAudioIOManagerStatePaused) {
         return;
     }
     
     // prepare the input stream state
-    self.inputStreamState = SDLWazeAudioManagerStateStarting;
+    self.inputStreamState = SDLAudioIOManagerStateStarting;
     
     // find a proper apt setting. best would be 16bit,16khz but at least one capable option is selected
     SDLAudioPassThruCapabilities *audioOptions = self.sdlManager.registerResponse.audioPassThruCapabilities.lastObject;
@@ -191,26 +192,26 @@ typedef NS_ENUM(NSInteger, SDLWazeAudioManagerState) {
     request.audioPassThruDisplayText2 = lines.count > 1 ? lines[1] : nil;
     request.muteAudio = @YES;
     
-    __weak SDLWazeAudioManager * weakSelf = self;
+    __weak SDLAudioIOManager * weakSelf = self;
     
     // this is the important area... handle the microphone audio data
     request.audioDataHandler = ^(NSData * _Nullable audioData) {
-        __strong SDLWazeAudioManager * strongSelf = weakSelf;
+        __strong SDLAudioIOManager * strongSelf = weakSelf;
         if (strongSelf == nil || audioData == nil) {
             return;
         }
         
-        __strong id<SDLWazeAudioManagerDelegate> d = strongSelf.delegate;
+        __strong id<SDLAudioIOManagerDelegate> d = strongSelf.delegate;
         
-        if (strongSelf.inputStreamState == SDLWazeAudioManagerStateStarting) {
-            strongSelf.inputStreamState = SDLWazeAudioManagerStateStarted;
+        if (strongSelf.inputStreamState == SDLAudioIOManagerStateStarting) {
+            strongSelf.inputStreamState = SDLAudioIOManagerStateStarted;
             
             if (d && [d respondsToSelector:@selector(audioManager:didStartInputStreamWithOptions:)]) {
                 [d audioManager:strongSelf didStartInputStreamWithOptions:audioOptions];
             }
         }
         
-        if (strongSelf.inputStreamState == SDLWazeAudioManagerStateStarted) {
+        if (strongSelf.inputStreamState == SDLAudioIOManagerStateStarted) {
             if (d && [d respondsToSelector:@selector(audioManager:didReceiveAudioData:)]) {
                 NSMutableData *mutableAudioData = [audioData mutableCopy];
                 double factor = [strongSelf sdl_calculateAmplifierFactor:[mutableAudioData bytes] size:mutableAudioData.length];
@@ -230,24 +231,24 @@ typedef NS_ENUM(NSInteger, SDLWazeAudioManagerState) {
     
     // send the request out to the head unit
     [self.sdlManager sendRequest:request withResponseHandler:^(__kindof SDLRPCRequest * _Nullable request, __kindof SDLRPCResponse * _Nullable response, NSError * _Nullable error) {
-        __strong SDLWazeAudioManager * strongSelf = weakSelf;
+        __strong SDLAudioIOManager * strongSelf = weakSelf;
         if (strongSelf == nil) {
             return;
         }
         
-        if (strongSelf.inputStreamState == SDLWazeAudioManagerStatePausing) {
-            strongSelf.inputStreamState = SDLWazeAudioManagerStatePaused;
+        if (strongSelf.inputStreamState == SDLAudioIOManagerStatePausing) {
+            strongSelf.inputStreamState = SDLAudioIOManagerStatePaused;
         } else {
-            strongSelf.inputStreamState = SDLWazeAudioManagerStateStopped;
+            strongSelf.inputStreamState = SDLAudioIOManagerStateStopped;
         }
         
-        __strong id<SDLWazeAudioManagerDelegate> d = strongSelf.delegate;
+        __strong id<SDLAudioIOManagerDelegate> d = strongSelf.delegate;
         
         if (d && [d respondsToSelector:@selector(audioManager:didFinishInputStreamWithResult:)]) {
             [d audioManager:strongSelf didFinishInputStreamWithResult:response.resultCode];
         }
         
-        if (strongSelf.outputStreamState == SDLWazeAudioManagerStateStarting) {
+        if (strongSelf.outputStreamState == SDLAudioIOManagerStateStarting) {
             [strongSelf sdl_startOutputStream];
         }
     }];
@@ -255,18 +256,18 @@ typedef NS_ENUM(NSInteger, SDLWazeAudioManagerState) {
 
 - (void)stopInputStream {
     switch (self.inputStreamState) {
-        case SDLWazeAudioManagerStatePaused:
+        case SDLAudioIOManagerStatePaused:
             // stream is paused so immediately set it to stopped.
-            self.inputStreamState = SDLWazeAudioManagerStateStopped;
+            self.inputStreamState = SDLAudioIOManagerStateStopped;
             break;
-        case SDLWazeAudioManagerStatePausing:
+        case SDLAudioIOManagerStatePausing:
             // stream is pausing we already sent a end request so update the status to stopping
-            self.inputStreamState = SDLWazeAudioManagerStateStopping;
+            self.inputStreamState = SDLAudioIOManagerStateStopping;
             break;
-        case SDLWazeAudioManagerStateStarted:
-        case SDLWazeAudioManagerStateStarting:
+        case SDLAudioIOManagerStateStarted:
+        case SDLAudioIOManagerStateStarting:
             // if input stream is starting or already started we have to send a request to stop it
-            self.inputStreamState = SDLWazeAudioManagerStateStopping;
+            self.inputStreamState = SDLAudioIOManagerStateStopping;
             [self.sdlManager sendRequest:[[SDLEndAudioPassThru alloc] init]];
             break;
         default:
@@ -277,10 +278,10 @@ typedef NS_ENUM(NSInteger, SDLWazeAudioManagerState) {
 
 - (void)sdl_pauseInputStream {
     switch (self.inputStreamState) {
-        case SDLWazeAudioManagerStateStarted:
-        case SDLWazeAudioManagerStateStarting:
+        case SDLAudioIOManagerStateStarted:
+        case SDLAudioIOManagerStateStarting:
             // if input stream is starting or already started we have to send a request to stop it but the status will be pausing (or paused later on)
-            self.inputStreamState = SDLWazeAudioManagerStatePausing;
+            self.inputStreamState = SDLAudioIOManagerStatePausing;
             [self.sdlManager sendRequest:[[SDLEndAudioPassThru alloc] init]];
             break;
         default:
