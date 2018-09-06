@@ -719,17 +719,9 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     SDLLogD(@"HMI level changed from level %@ to level %@", self.hmiLevel, hmiStatus.hmiLevel);
     self.hmiLevel = hmiStatus.hmiLevel;
 
-    if (self.isHmiStateVideoStreamCapable) {
-        [self sdl_startVideoSession];
-    } else {
-        [self sdl_stopVideoSession];
-    }
-
-    if (self.isHmiStateAudioStreamCapable) {
-        [self sdl_startAudioSession];
-    } else {
-        [self sdl_stopAudioSession];
-    }
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self tryStartSession];
+    });
 }
 
 - (void)sdl_permissionsChange:(SDLRPCNotificationNotification *)notification {
@@ -749,7 +741,7 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     self.permissionItems = items;
     self.videoStreamPermissionGranted = touchPermissionGranted;
     
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [self tryStartSession];
     });
 }

@@ -67,6 +67,33 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     return self.inputStreamState != SDLAudioIOManagerStateStopped;
 }
 
+- (void)setInputStreamState:(SDLAudioIOManagerState)inputStreamState {
+    NSLog(@"Change Input Stream state from %@ to %@", [self nameForStreamState:self->_inputStreamState], [self nameForStreamState:inputStreamState]);
+    self->_inputStreamState = inputStreamState;
+}
+
+- (void)setOutputStreamState:(SDLAudioIOManagerState)outputStreamState {
+    NSLog(@"Change Output Stream state from %@ to %@", [self nameForStreamState:self->_outputStreamState], [self nameForStreamState:outputStreamState]);
+    self->_outputStreamState = outputStreamState;
+}
+
+- (NSString *)nameForStreamState:(SDLAudioIOManagerState)state {
+    switch (state) {
+        case SDLAudioIOManagerStateStopped:
+            return @"Stopped";
+        case SDLAudioIOManagerStateStarting:
+            return @"Starting";
+        case SDLAudioIOManagerStatePaused:
+            return @"Paused";
+        case SDLAudioIOManagerStatePausing:
+            return @"Pausing";
+        case SDLAudioIOManagerStateStarted:
+            return @"Started";
+        case SDLAudioIOManagerStateStopping:
+            return @"Stopping";
+    }
+}
+
 #pragma mark- Output stream area
 
 - (void)writeOutputStreamWithFileURL:(NSURL *)fileURL {
@@ -82,11 +109,11 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
             [self sdl_pauseInputStream];
             return;
         }
+    }
     
-        // in case the input stream is stopping or pausing we will return here and wait until it's fully paused or stopped (there we will start the stream)
-        if (self.inputStreamState == SDLAudioIOManagerStateStopping || self.inputStreamState == SDLAudioIOManagerStatePausing) {
-            return;
-        }
+    // in case the input stream is stopping or pausing we will return here and wait until it's fully paused or stopped (there we will start the stream)
+    if (self.inputStreamState == SDLAudioIOManagerStateStopping || self.inputStreamState == SDLAudioIOManagerStatePausing) {
+        return;
     }
     
     [self sdl_startOutputStream];
@@ -119,7 +146,9 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
         
         // possible that the input stream is paused. resume it
         if (self.inputStreamState == SDLAudioIOManagerStatePaused) {
-            [self sdl_startInputStream];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [self sdl_startInputStream];
+            });
         }
     }
 }
@@ -144,6 +173,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 
 - (void)startInputStream {
     if (self.inputStreamState != SDLAudioIOManagerStateStopped && self.inputStreamState != SDLAudioIOManagerStatePaused) {
+        NSLog(@"AudioManager error. Start input stream not valid. Current input stream state is %li", (long)self.inputStreamState);
         return;
     }
     
@@ -156,6 +186,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 
 - (void)sdl_startInputStream {
     if (self.inputStreamState != SDLAudioIOManagerStateStopped && self.inputStreamState != SDLAudioIOManagerStatePaused) {
+        NSLog(@"AudioManager error. Start input stream (internal) not valid. Current input stream state is %li", (long)self.inputStreamState);
         return;
     }
     
@@ -182,20 +213,20 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     self.inputStreamAmplifierFactor = 0;
     
     // create a request we will be sending
-    SDLPerformAudioPassThru *request = [[SDLPerformAudioPassThru alloc] init];
-    request.audioType = audioOptions.audioType;
-    request.bitsPerSample = audioOptions.bitsPerSample;
-    request.samplingRate = audioOptions.samplingRate;
-    request.initialPrompt = [NSArray arrayWithObject:self.inputStreamPrompt];
-    request.maxDuration = @1000000;
-    request.audioPassThruDisplayText1 = lines.count > 0 ? lines[0] : nil;
-    request.audioPassThruDisplayText2 = lines.count > 1 ? lines[1] : nil;
-    request.muteAudio = @YES;
+    SDLPerformAudioPassThru *performAudioInput = [[SDLPerformAudioPassThru alloc] init];
+    performAudioInput.audioType = audioOptions.audioType;
+    performAudioInput.bitsPerSample = audioOptions.bitsPerSample;
+    performAudioInput.samplingRate = audioOptions.samplingRate;
+    performAudioInput.initialPrompt = [NSArray arrayWithObject:self.inputStreamPrompt];
+    performAudioInput.maxDuration = @1000000;
+    performAudioInput.audioPassThruDisplayText1 = lines.count > 0 ? lines[0] : nil;
+    performAudioInput.audioPassThruDisplayText2 = lines.count > 1 ? lines[1] : nil;
+    performAudioInput.muteAudio = @YES;
     
     __weak SDLAudioIOManager * weakSelf = self;
     
     // this is the important area... handle the microphone audio data
-    request.audioDataHandler = ^(NSData * _Nullable audioData) {
+    performAudioInput.audioDataHandler = ^(NSData * _Nullable audioData) {
         __strong SDLAudioIOManager * strongSelf = weakSelf;
         if (strongSelf == nil || audioData == nil) {
             return;
@@ -230,15 +261,25 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     };
     
     // send the request out to the head unit
-    [self.sdlManager sendRequest:request withResponseHandler:^(__kindof SDLRPCRequest * _Nullable request, __kindof SDLRPCResponse * _Nullable response, NSError * _Nullable error) {
+    NSLog(@"Sending request %@", [performAudioInput serializeAsDictionary:0]);
+    [self.sdlManager sendRequest:performAudioInput withResponseHandler:^(__kindof SDLRPCRequest * _Nullable request, __kindof SDLRPCResponse * _Nullable response, NSError * _Nullable error) {
+        NSLog(@"Response received %@", [response serializeAsDictionary:0]);
         __strong SDLAudioIOManager * strongSelf = weakSelf;
         if (strongSelf == nil) {
             return;
         }
         
         if (strongSelf.inputStreamState == SDLAudioIOManagerStatePausing) {
+            // the response is received because we wanted to pause the input stream
             strongSelf.inputStreamState = SDLAudioIOManagerStatePaused;
+        } else if (strongSelf.inputStreamState == SDLAudioIOManagerStateStarting && [response.resultCode isEqualToEnum:SDLResultRejected]) {
+            // this state can be true if the request is rejected so we set the state back to paused and retry in a bit
+            strongSelf.inputStreamState = SDLAudioIOManagerStatePaused;
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [strongSelf sdl_startInputStream];
+            });
         } else {
+            // the input stream was started (or even stopping) and now we want to finally stop it
             strongSelf.inputStreamState = SDLAudioIOManagerStateStopped;
         }
         
