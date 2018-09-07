@@ -37,6 +37,8 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 @property (strong, nonatomic, nullable) SDLAudioPassThruCapabilities *inputStreamOptions;
 @property (assign, nonatomic) double inputStreamAmplifierFactor;
 
+@property (assign, nonatomic) NSUInteger inputStreamRetryCounter;
+
 @end
 
 @implementation SDLAudioIOManager
@@ -55,6 +57,8 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     
     self.inputStreamOptions = nil;
     self.inputStreamAmplifierFactor = 0;
+    
+    self.inputStreamRetryCounter = 0;
 
     return self;
 }
@@ -269,26 +273,33 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
             return;
         }
         
-        if (strongSelf.inputStreamState == SDLAudioIOManagerStatePausing) {
-            // the response is received because we wanted to pause the input stream
-            strongSelf.inputStreamState = SDLAudioIOManagerStatePaused;
-        } else if (strongSelf.inputStreamState == SDLAudioIOManagerStateStarting && [response.resultCode isEqualToEnum:SDLResultRejected]) {
+        if (strongSelf.inputStreamState == SDLAudioIOManagerStateStarting && [response.resultCode isEqualToEnum:SDLResultRejected] && self.inputStreamRetryCounter < 3) {
             // this state can be true if the request is rejected so we set the state back to paused and retry in a bit
+            self.inputStreamRetryCounter++;
             strongSelf.inputStreamState = SDLAudioIOManagerStatePaused;
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                 [strongSelf sdl_startInputStream];
             });
+            // do not notify that it didn't work
+            return;
+        } else if (strongSelf.inputStreamState == SDLAudioIOManagerStatePausing) {
+            // the response is received because we wanted to pause the input stream
+            strongSelf.inputStreamState = SDLAudioIOManagerStatePaused;
         } else {
             // the input stream was started (or even stopping) and now we want to finally stop it
             strongSelf.inputStreamState = SDLAudioIOManagerStateStopped;
         }
         
-        __strong id<SDLAudioIOManagerDelegate> d = strongSelf.delegate;
+        // reset the retry counter in case previous tries were rejected
+        self.inputStreamRetryCounter = 0;
         
+        // notify about the result (except it was rejected and we want to retry
+        __strong id<SDLAudioIOManagerDelegate> d = strongSelf.delegate;
         if (d && [d respondsToSelector:@selector(audioManager:didFinishInputStreamWithResult:)]) {
             [d audioManager:strongSelf didFinishInputStreamWithResult:response.resultCode];
         }
         
+        // if output stream is starting. now it's time to do so.
         if (strongSelf.outputStreamState == SDLAudioIOManagerStateStarting) {
             [strongSelf sdl_startOutputStream];
         }
