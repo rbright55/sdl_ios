@@ -59,6 +59,8 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     self.inputStreamAmplifierFactor = 0;
     
     self.inputStreamRetryCounter = 0;
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onTransportDisconnect) name:SDLTransportDidDisconnect object:nil];
 
     return self;
 }
@@ -96,6 +98,14 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
         case SDLAudioIOManagerStateStopping:
             return @"Stopping";
     }
+}
+
+- (void)onTransportDisconnect {
+    [self.sdlManager.streamManager.audioManager stop];
+    
+    self.inputStreamRetryCounter = 0;
+    self.inputStreamState = SDLAudioIOManagerStateStopped;
+    self.outputStreamState = SDLAudioIOManagerStateStopped;
 }
 
 #pragma mark- Output stream area
@@ -136,24 +146,28 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     }
 }
 
+- (void)sdl_stopOutputStream {
+    // queue is now empty. stop the output stream
+    self.outputStreamState = SDLAudioIOManagerStateStopped;
+    
+    if ([self.delegate respondsToSelector:@selector(audioManagerDidStopOutputStream:)]) {
+        [self.delegate audioManagerDidStopOutputStream:self];
+    }
+    
+    // possible that the input stream is paused. resume it
+    if (self.inputStreamState == SDLAudioIOManagerStatePaused) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [self sdl_startInputStream];
+        });
+    }
+}
+
 - (void)sdl_continueOutputStream:(SDLAudioStreamManager * _Nonnull)audioManager {
     if (audioManager.queue.count > 0) {
         // continue dequeuing
         [audioManager playNextWhenReady];
     } else {
-        // queue is now empty. stop the output stream
-        self.outputStreamState = SDLAudioIOManagerStateStopped;
-        
-        if ([self.delegate respondsToSelector:@selector(audioManagerDidStopOutputStream:)]) {
-            [self.delegate audioManagerDidStopOutputStream:self];
-        }
-        
-        // possible that the input stream is paused. resume it
-        if (self.inputStreamState == SDLAudioIOManagerStatePaused) {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                [self sdl_startInputStream];
-            });
-        }
+        [self sdl_stopOutputStream];
     }
 }
 
@@ -170,7 +184,12 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
         [self.delegate audioManager:self errorDidOccurForURL:fileURL error:error];
     }
     
-    [self sdl_continueOutputStream:audioManager];
+    if ([error.domain isEqualToString:SDLErrorDomainAudioStreamManager] && error.code == SDLAudioStreamManagerErrorNotConnected) {
+        [audioManager stop];
+        [self sdl_stopOutputStream];
+    } else {
+        [self sdl_continueOutputStream:audioManager];
+    }
 }
 
 #pragma mark- Input stream area
