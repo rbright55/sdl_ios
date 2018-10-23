@@ -39,7 +39,12 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (nullable SDLLanguage)language {
-    return [parameters sdl_objectForName:SDLNameLanguage];
+    id val = [parameters sdl_objectForName:SDLNameLanguage];
+    // because the SDLEnum typedef is "NSString *" you can't use class on the type
+    if (val != nil && ![val isKindOfClass:[SDLLanguageEnUs class]]) {
+        val = SDLLanguageEnUs;
+    }
+    return val;
 }
 
 - (void)setHmiDisplayLanguage:(nullable SDLLanguage)hmiDisplayLanguage {
@@ -47,7 +52,12 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (nullable SDLLanguage)hmiDisplayLanguage {
-    return [parameters sdl_objectForName:SDLNameHMIDisplayLanguage];
+    id val = [parameters sdl_objectForName:SDLNameHMIDisplayLanguage];
+    // because the SDLEnum typedef is "NSString *" you can't use class on the type
+    if (val != nil && ![val isKindOfClass:[SDLLanguageEnUs class]]) {
+        val = SDLLanguageEnUs;
+    }
+    return val;
 }
 
 - (void)setDisplayCapabilities:(nullable SDLDisplayCapabilities *)displayCapabilities {

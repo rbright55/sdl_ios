@@ -160,7 +160,7 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (NSString *)backgroundingString {
-    return self.lifecycleManager.backgroundString;
+    return self.videoLifecycleManager.backgroundString;
 }
 
 #pragma mark - Setters
@@ -174,7 +174,7 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (void)setBackgroundingString:(NSString *)backgroundingString {
-    self.lifecycleManager.backgroundString = backgroundingString;
+    self.videoLifecycleManager.backgroundString = backgroundingString;
 }
 
 @end

@@ -24,9 +24,12 @@
 #import "SDLH264VideoEncoder.h"
 #import "SDLHMICapabilities.h"
 #import "SDLHMILevel.h"
+#import "SDLHMIPermissions.h"
 #import "SDLImageResolution.h"
 #import "SDLLogMacros.h"
 #import "SDLOnHMIStatus.h"
+#import "SDLOnPermissionsChange.h"
+#import "SDLPermissionItem.h"
 #import "SDLProtocol.h"
 #import "SDLProtocolMessage.h"
 #import "SDLRegisterAppInterfaceResponse.h"
@@ -153,7 +156,7 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
 }
 
 - (void)dealloc {
-    [self.videoStreamStateMachine transitionToState:SDLVideoStreamStateStopped];
+    [self.videoStreamStateMachine transitionToState:SDLVideoStreamManagerStateStopped];
 }
 
 - (void)startWithProtocol:(SDLProtocol *)protocol {
@@ -375,6 +378,12 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
         [self.videoEncoder stop];
         self.videoEncoder = nil;
     }
+    
+    if (self.displayLink != nil) {
+        self.displayLink.paused = YES;
+        [self.displayLink invalidate];
+        self.displayLink = nil;
+    }
 
     if (self.videoEncoder == nil) {
         NSError* error = nil;
@@ -425,6 +434,12 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
 - (void)didEnterStateVideoStreamSuspended {
     SDLLogD(@"Video stream suspended");
 
+    if (self.displayLink != nil) {
+        self.displayLink.paused = YES;
+        [self.displayLink invalidate];
+        self.displayLink = nil;
+    }
+    
     [[NSNotificationCenter defaultCenter] postNotificationName:SDLVideoStreamSuspendedNotification object:nil];
 }
 
@@ -580,11 +595,13 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     // if startWithProtocol has not been called yet, abort here
     if (!self.protocol) { return; }
 
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
     if (self.isHmiStateVideoStreamCapable && self.videoStreamPermissionGranted) {
         [self sdl_startVideoSession];
     } else {
         [self sdl_stopVideoSession];
     }
+    });
 }
 
 - (void)sdl_permissionsChange:(SDLRPCNotificationNotification *)notification {
@@ -604,11 +621,13 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     self.permissionItems = items;
     self.videoStreamPermissionGranted = touchPermissionGranted;
     
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
     if (self.isHmiStateVideoStreamCapable && self.videoStreamPermissionGranted) {
         [self sdl_startVideoSession];
     } else {
         [self sdl_stopVideoSession];
     }
+    });
 }
 
 
