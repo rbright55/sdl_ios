@@ -74,12 +74,12 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 }
 
 - (void)setInputStreamState:(SDLAudioIOManagerState)inputStreamState {
-    NSLog(@"Change Input Stream state from %@ to %@", [self nameForStreamState:self->_inputStreamState], [self nameForStreamState:inputStreamState]);
+    SDLLogV(@"Change Input Stream state from %@ to %@", [self nameForStreamState:self->_inputStreamState], [self nameForStreamState:inputStreamState]);
     self->_inputStreamState = inputStreamState;
 }
 
 - (void)setOutputStreamState:(SDLAudioIOManagerState)outputStreamState {
-    NSLog(@"Change Output Stream state from %@ to %@", [self nameForStreamState:self->_outputStreamState], [self nameForStreamState:outputStreamState]);
+    SDLLogV(@"Change Output Stream state from %@ to %@", [self nameForStreamState:self->_outputStreamState], [self nameForStreamState:outputStreamState]);
     self->_outputStreamState = outputStreamState;
 }
 
@@ -111,6 +111,18 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 #pragma mark- Output stream area
 
 - (void)writeOutputStreamWithFileURL:(NSURL *)fileURL {
+    SDLLogV(@"Writing file to output stream. URL: %@", fileURL);
+    
+    if (!self.sdlManager.streamManager.audioManager) {
+        SDLLogE(@"Error: The SDL audio manager does not exist.\nSDLManager: %@\nStream manager: %@\nAudio manager: %@", self.sdlManager, self.sdlManager.streamManager, self.sdlManager.streamManager.audioManager);
+        return;
+    }
+    
+    if (self.sdlManager.streamManager.audioManager.delegate != self) {
+        SDLLogE(@"Error: The audio manager delegate is not properly set.\nExpected delegate: %@\nCurrent delegate: %@", self, self.sdlManager.streamManager.audioManager.delegate);
+        return;
+    }
+    
     // push the audio file to the underlying manager
     [self.sdlManager.streamManager.audioManager pushWithFileURL:fileURL];
     
@@ -196,7 +208,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 
 - (void)startInputStream {
     if (self.inputStreamState != SDLAudioIOManagerStateStopped && self.inputStreamState != SDLAudioIOManagerStatePaused) {
-        NSLog(@"AudioManager error. Start input stream not valid. Current input stream state is %li", (long)self.inputStreamState);
+        SDLLogW(@"AudioManager error. Start input stream not valid. Current input stream state is %li", (long)self.inputStreamState);
         return;
     }
     
@@ -209,7 +221,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 
 - (void)sdl_startInputStream {
     if (self.inputStreamState != SDLAudioIOManagerStateStopped && self.inputStreamState != SDLAudioIOManagerStatePaused) {
-        NSLog(@"AudioManager error. Start input stream (internal) not valid. Current input stream state is %li", (long)self.inputStreamState);
+        SDLLogW(@"AudioManager error. Start input stream (internal) not valid. Current input stream state is %li", (long)self.inputStreamState);
         return;
     }
     
@@ -284,9 +296,9 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     };
     
     // send the request out to the head unit
-    NSLog(@"Sending request %@", [performAudioInput serializeAsDictionary:0]);
+    SDLLogV(@"Sending request %@", [performAudioInput serializeAsDictionary:0]);
     [self.sdlManager sendRequest:performAudioInput withResponseHandler:^(__kindof SDLRPCRequest * _Nullable request, __kindof SDLRPCResponse * _Nullable response, NSError * _Nullable error) {
-        NSLog(@"Response received %@", [response serializeAsDictionary:0]);
+        SDLLogV(@"Response received %@", [response serializeAsDictionary:0]);
         __strong SDLAudioIOManager * strongSelf = weakSelf;
         if (strongSelf == nil) {
             return;
