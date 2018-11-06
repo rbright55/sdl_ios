@@ -30,16 +30,8 @@ typedef NS_ENUM(NSInteger, SDLAudioStreamManagerError) {
  */
 @property (weak, nonatomic) id<SDLAudioStreamManagerDelegate> delegate;
 
-/**
- Whether or not we are currently playing audio
- */
-@property (assign, nonatomic, readonly, getter=isPlaying) BOOL playing;
-
-/**
- The queue of audio files that will be played in sequence
- */
-@property (copy, nonatomic, readonly) NSArray<SDLAudioFile *> *queue;
-
+@property (strong, nonatomic, readonly) NSOperationQueue *queue;
+@property (strong, nonatomic, nonnull, readonly) NSDate *audioPlaybackEnd;
 /**
  Init should only occur with dependencies. use `initWithManager:`
 
@@ -65,18 +57,6 @@ typedef NS_ENUM(NSInteger, SDLAudioStreamManagerError) {
  @param fileURL File URL to convert
  */
 - (void)pushWithFileURL:(NSURL *)fileURL;
-
-/**
- Play the next item in the queue. If an item is currently playing, it will continue playing and this item will begin playing after it is completed.
-
- When complete, this will callback on the delegate.
- */
-- (void)playNextWhenReady;
-
-/**
- Stop playing the queue after the current item completes and clear the queue. If nothing is playing, the queue will be cleared.
- */
-- (void)stop;
 
 @end
 

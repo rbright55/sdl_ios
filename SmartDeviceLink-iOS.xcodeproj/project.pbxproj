@@ -1074,8 +1074,8 @@
 		5D9F50811BE7E6E300FEF399 /* SDLPermissionsManagerSpec.m in Sources */ = {isa = PBXBuildFile; fileRef = 5D9F50801BE7E6E300FEF399 /* SDLPermissionsManagerSpec.m */; };
 		5D9F50831BEA5C6100FEF399 /* SDLFileManagerSpec.m in Sources */ = {isa = PBXBuildFile; fileRef = 5D9F50821BEA5C6100FEF399 /* SDLFileManagerSpec.m */; };
 		5D9F50871BED412E00FEF399 /* TestConnectionManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 5D9F50861BED412E00FEF399 /* TestConnectionManager.m */; };
-		5D9FC29B1FD8812F00ACA5C2 /* SDLAudioStreamManagerDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = 5D9FC29A1FD8812E00ACA5C2 /* SDLAudioStreamManagerDelegate.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		5D9FC29E1FD8813900ACA5C2 /* SDLAudioStreamManager.h in Headers */ = {isa = PBXBuildFile; fileRef = 5D9FC29C1FD8813900ACA5C2 /* SDLAudioStreamManager.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		5D9FC29B1FD8812F00ACA5C2 /* SDLAudioStreamManagerDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = 5D9FC29A1FD8812E00ACA5C2 /* SDLAudioStreamManagerDelegate.h */; };
+		5D9FC29E1FD8813900ACA5C2 /* SDLAudioStreamManager.h in Headers */ = {isa = PBXBuildFile; fileRef = 5D9FC29C1FD8813900ACA5C2 /* SDLAudioStreamManager.h */; };
 		5D9FC29F1FD8813900ACA5C2 /* SDLAudioStreamManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 5D9FC29D1FD8813900ACA5C2 /* SDLAudioStreamManager.m */; };
 		5D9FC2A21FD8814A00ACA5C2 /* SDLAudioFile.m in Sources */ = {isa = PBXBuildFile; fileRef = 5D9FC2A01FD8814A00ACA5C2 /* SDLAudioFile.m */; };
 		5D9FC2A31FD8814A00ACA5C2 /* SDLAudioFile.h in Headers */ = {isa = PBXBuildFile; fileRef = 5D9FC2A11FD8814A00ACA5C2 /* SDLAudioFile.h */; };
@@ -5863,7 +5863,6 @@
 				1FF7DABA1F75B2A800B46C30 /* SDLFocusableItemLocator.h in Headers */,
 				5D019276214994AC003500F6 /* NSMutableArray+Safe.h in Headers */,
 				5D61FDE11A84238C00846EE7 /* SDLTurn.h in Headers */,
-				5D9FC29B1FD8812F00ACA5C2 /* SDLAudioStreamManagerDelegate.h in Headers */,
 				5D61FC801A84238C00846EE7 /* SDLDeleteSubMenuResponse.h in Headers */,
 				5D00AC731F151CFE004000D9 /* SDLGetSystemCapabilityResponse.h in Headers */,
 				5D61FDBD1A84238C00846EE7 /* SDLSystemContext.h in Headers */,
@@ -6008,6 +6007,8 @@
 				5D0C29FC20D93D8C008B56CD /* SDLVideoStreamingState.h in Headers */,
 				1E5AD0501F1F7BF10029B8AF /* SDLRadioBand.h in Headers */,
 				1E5AD0401F1F58480029B8AF /* SDLVentilationMode.h in Headers */,
+				5D9FC29B1FD8812F00ACA5C2 /* SDLAudioStreamManagerDelegate.h in Headers */,
+				5D9FC29E1FD8813900ACA5C2 /* SDLAudioStreamManager.h in Headers */,
 				1E5AD0941F20BEAD0029B8AF /* SDLSetInteriorVehicleDataResponse.h in Headers */,
 				1E5AD0881F20B9AA0029B8AF /* SDLGetInteriorVehicleData.h in Headers */,
 				1E5AD04C1F1F79640029B8AF /* SDLDefrostZone.h in Headers */,
@@ -6104,7 +6105,6 @@
 				5D61FCFD1A84238C00846EE7 /* SDLObjectWithPriority.h in Headers */,
 				DAC5726C1D11B4840004288B /* SDLTouchManagerDelegate.h in Headers */,
 				5D61FD3F1A84238C00846EE7 /* SDLPrioritizedObjectCollection.h in Headers */,
-				5D9FC29E1FD8813900ACA5C2 /* SDLAudioStreamManager.h in Headers */,
 				5DD67CB01E65DDB7009CD394 /* SDLLogTargetAppleSystemLog.h in Headers */,
 				5D61FCBF1A84238C00846EE7 /* SDLHexUtility.h in Headers */,
 				5D00AC6B1F141339004000D9 /* SDLSystemCapability.h in Headers */,

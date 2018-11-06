@@ -23,11 +23,9 @@ NSString *const SDLErrorDomainAudioStreamManager = @"com.sdl.extension.pcmAudioS
 @interface SDLAudioStreamManager ()
 
 @property (weak, nonatomic) id<SDLStreamingAudioManagerType> streamManager;
-@property (strong, nonatomic) NSMutableArray<SDLAudioFile *> *mutableQueue;
-@property (strong, nonatomic) dispatch_queue_t audioQueue;
-@property (assign, nonatomic, readwrite, getter=isPlaying) BOOL playing;
+@property (strong, nonatomic) NSOperationQueue *queue;
 
-@property (assign, nonatomic) BOOL shouldPlayWhenReady;
+@property (strong, nonatomic, nonnull) NSDate *audioPlaybackEnd;
 
 @end
 
@@ -36,27 +34,39 @@ NSString *const SDLErrorDomainAudioStreamManager = @"com.sdl.extension.pcmAudioS
 - (instancetype)initWithManager:(id<SDLStreamingAudioManagerType>)streamManager {
     self = [super init];
     if (!self) { return nil; }
-
-    _mutableQueue = [NSMutableArray array];
-    _audioQueue = dispatch_queue_create("com.sdl.audiomanager.transcode", DISPATCH_QUEUE_SERIAL);
-    _shouldPlayWhenReady = NO;
-
+    
+    self.queue = [[NSOperationQueue alloc] init];
+    self.queue.maxConcurrentOperationCount = 1;
+    self.queue.suspended = YES;
+    
     _streamManager = streamManager;
 
+    _audioPlaybackEnd = [NSDate dateWithTimeIntervalSince1970:0];
+    
     return self;
 }
 
-- (NSArray<SDLFile *> *)queue {
-    return [_mutableQueue copy];
-}
-
 - (void)pushWithFileURL:(NSURL *)fileURL {
-    dispatch_async(_audioQueue, ^{
-        [self sdl_pushWithContentsOfURL:fileURL];
-    });
+    NSBlockOperation *operation = [[NSBlockOperation alloc] init];
+    __weak NSBlockOperation *weakOperation = operation;
+    [operation addExecutionBlock:^{
+        if (!weakOperation || weakOperation.isCancelled) return;
+        
+        [self sdl_pushWithFileURL:fileURL];
+    }];
+
+    [self.queue addOperation:operation];
 }
 
-- (void)sdl_pushWithContentsOfURL:(NSURL *)fileURL {
+- (void)sdl_pushWithFileURL:(NSURL *)fileURL {
+    if (!self.streamManager.isAudioConnected) {
+        if (self.delegate != nil) {
+            NSError *error = [NSError errorWithDomain:SDLErrorDomainAudioStreamManager code:SDLAudioStreamManagerErrorNotConnected userInfo:nil];
+            [self.delegate audioStreamManager:self errorDidOccurForFile:fileURL error:error];
+        }
+        return;
+    }
+    
     // Convert and store in the queue
     NSError *error = nil;
     SDLPCMAudioConverter *converter = [[SDLPCMAudioConverter alloc] initWithFileURL:fileURL];
@@ -72,63 +82,41 @@ NSString *const SDLErrorDomainAudioStreamManager = @"com.sdl.extension.pcmAudioS
     }
 
     SDLAudioFile *audioFile = [[SDLAudioFile alloc] initWithInputFileURL:fileURL outputFileURL:outputFileURL estimatedDuration:estimatedDuration];
-    [self.mutableQueue addObject:audioFile];
-
-    if (self.shouldPlayWhenReady) {
-        [self sdl_playNextWhenReady];
-    }
+    [self sdl_playAudioFile:audioFile];
 }
 
-- (void)playNextWhenReady {
-    dispatch_async(_audioQueue, ^{
-        [self sdl_playNextWhenReady];
-    });
-}
-
-- (void)sdl_playNextWhenReady {
-    if (self.mutableQueue.count == 0) {
-        self.shouldPlayWhenReady = YES;
-        return;
-    }
-
-    if (!self.streamManager.isAudioConnected) {
-        if (self.delegate != nil) {
-            NSError *error = [NSError errorWithDomain:SDLErrorDomainAudioStreamManager code:SDLAudioStreamManagerErrorNotConnected userInfo:nil];
-            [self.delegate audioStreamManager:self errorDidOccurForFile:self.mutableQueue.firstObject.inputFileURL error:error];
-        }
-        return;
-    }
-
-    self.shouldPlayWhenReady = NO;
-    __block SDLAudioFile *file = self.mutableQueue.firstObject;
-    [self.mutableQueue removeObjectAtIndex:0];
-
+- (void)sdl_playAudioFile:(SDLAudioFile *)audioFile {
     // Strip the first bunch of bytes (because of how Apple outputs the data) and send to the audio stream, if we don't do this, it will make a weird click sound
-    SDLLogD(@"Playing audio file: %@", file);
-    NSData *audioData = [file.data subdataWithRange:NSMakeRange(5760, (file.data.length - 5760))];
-    __block BOOL success = [self.streamManager sendAudioData:audioData];
-    self.playing = YES;
-
-    float audioLengthSecs = (float)audioData.length / (float)32000.0;
-    __weak typeof(self) weakself = self;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(audioLengthSecs * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        weakself.playing = NO;
-        NSError *error = nil;
-        if (weakself.delegate != nil) {
-            [weakself.delegate audioStreamManager:weakself fileDidFinishPlaying:file.inputFileURL successfully:success];
+    NSData *data = audioFile.data;
+    NSData *audioData = [data subdataWithRange:NSMakeRange(5760, (data.length - 5760))];
+    
+    SDLLogD(@"Playing audio file: %@", audioFile);
+    BOOL success = [self.streamManager sendAudioData:audioData];
+    NSTimeInterval audioLengthSecs = (double)audioData.length / 32000.0;
+    
+    // delete the output data. not needed anymore
+    [[NSFileManager defaultManager] removeItemAtURL:audioFile.outputFileURL error:nil];
+    
+    // date1 is now + playback time (only correct if no playback is active)
+    NSDate *date1 = [NSDate dateWithTimeIntervalSinceNow:audioLengthSecs];
+    // date2 is last known playback endtime + playback time (only true if playback is currently active)
+    NSDate *date2 = [self.audioPlaybackEnd dateByAddingTimeInterval:audioLengthSecs];
+    
+    // date1 > date2 if playback is not active
+    if ([date1 compare:date2] == NSOrderedDescending) {
+        SDLLogD(@"Adding first audio file to audio buffer");
+        // WORKARONUD: the first playback file finish notification should be a second ahead so the audio buffer doesn't run empty
+        self.audioPlaybackEnd = [date1 dateByAddingTimeInterval:-1.0];
+    } else {
+        SDLLogD(@"Adding subsequent audio file to audio buffer");
+        self.audioPlaybackEnd = date2;
+    }
+    
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(self.audioPlaybackEnd.timeIntervalSinceNow * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        SDLLogD(@"Ending Audio file: %@", audioFile);
+        if (self.delegate != nil) {
+            [self.delegate audioStreamManager:self fileDidFinishPlaying:audioFile.inputFileURL successfully:success];
         }
-        SDLLogD(@"Ending Audio file: %@", file);
-        [[NSFileManager defaultManager] removeItemAtURL:file.outputFileURL error:&error];
-        if (weakself.delegate != nil && error != nil) {
-            [weakself.delegate audioStreamManager:weakself errorDidOccurForFile:file.inputFileURL error:error];
-        }
-    });
-}
-
-- (void)stop {
-    dispatch_async(_audioQueue, ^{
-        self.shouldPlayWhenReady = NO;
-        [self.mutableQueue removeAllObjects];
     });
 }
 

@@ -7,6 +7,9 @@
 
 #import <SmartDeviceLink/SmartDeviceLink.h>
 #import "SDLAudioIOManagerDelegate.h"
+#import "SDLAudioStreamManager.h"
+#import "SDLAudioStreamManagerDelegate.h"
+
 
 /** Amplifier const settings */
 #define INPUT_STREAM_AMPLIFIER_FACTOR_MAX (50.0)
@@ -39,6 +42,8 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 
 @property (assign, nonatomic) NSUInteger inputStreamRetryCounter;
 
+@property (strong, nonatomic) dispatch_queue_t dispatchQueue;
+
 @end
 
 @implementation SDLAudioIOManager
@@ -60,6 +65,8 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     
     self.inputStreamRetryCounter = 0;
     
+    self.dispatchQueue = dispatch_queue_create("com.sdl.manager.ioaudio.queue", nil);
+    
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onTransportDisconnect) name:SDLTransportDidDisconnect object:nil];
 
     return self;
@@ -74,12 +81,12 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 }
 
 - (void)setInputStreamState:(SDLAudioIOManagerState)inputStreamState {
-    SDLLogV(@"Change Input Stream state from %@ to %@", [self nameForStreamState:self->_inputStreamState], [self nameForStreamState:inputStreamState]);
+    SDLLogV(@"Audio IO manager: Change Input Stream state from %@ to %@", [self nameForStreamState:self->_inputStreamState], [self nameForStreamState:inputStreamState]);
     self->_inputStreamState = inputStreamState;
 }
 
 - (void)setOutputStreamState:(SDLAudioIOManagerState)outputStreamState {
-    SDLLogV(@"Change Output Stream state from %@ to %@", [self nameForStreamState:self->_outputStreamState], [self nameForStreamState:outputStreamState]);
+    SDLLogV(@"Audio IO manager: Change Output Stream state from %@ to %@", [self nameForStreamState:self->_outputStreamState], [self nameForStreamState:outputStreamState]);
     self->_outputStreamState = outputStreamState;
 }
 
@@ -101,8 +108,9 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 }
 
 - (void)onTransportDisconnect {
-    [self.sdlManager.streamManager.audioManager stop];
+    [self.sdlManager.streamManager.audioManager.queue cancelAllOperations];
     
+    self.inputStreamOptions = nil;
     self.inputStreamRetryCounter = 0;
     self.inputStreamState = SDLAudioIOManagerStateStopped;
     self.outputStreamState = SDLAudioIOManagerStateStopped;
@@ -111,15 +119,16 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 #pragma mark- Output stream area
 
 - (void)writeOutputStreamWithFileURL:(NSURL *)fileURL {
-    SDLLogV(@"Writing file to output stream. URL: %@", fileURL);
+    dispatch_async(self.dispatchQueue, ^{
+    SDLLogV(@"Audio IO manager: Writing file to output stream. URL: %@", fileURL);
     
     if (!self.sdlManager.streamManager.audioManager) {
-        SDLLogE(@"Error: The SDL audio manager does not exist.\nSDLManager: %@\nStream manager: %@\nAudio manager: %@", self.sdlManager, self.sdlManager.streamManager, self.sdlManager.streamManager.audioManager);
+        SDLLogE(@"Audio IO manager: Error: The SDL audio manager does not exist. SDLManager: %@, Stream manager: %@, Audio manager: %@", self.sdlManager, self.sdlManager.streamManager, self.sdlManager.streamManager.audioManager);
         return;
     }
     
     if (self.sdlManager.streamManager.audioManager.delegate != self) {
-        SDLLogE(@"Error: The audio manager delegate is not properly set.\nExpected delegate: %@\nCurrent delegate: %@", self, self.sdlManager.streamManager.audioManager.delegate);
+        SDLLogE(@"Audio IO manager: Error: The SDL audio manager delegate is not properly set. Expected delegate: %@, Current delegate: %@", self, self.sdlManager.streamManager.audioManager.delegate);
         return;
     }
     
@@ -143,9 +152,11 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     }
     
     [self sdl_startOutputStream];
+    });
 }
 
 - (void)sdl_startOutputStream {
+    SDLLogV(@"Audio IO manager %s", __FUNCTION__);
     if (self.outputStreamState == SDLAudioIOManagerStateStarting) {
         self.outputStreamState = SDLAudioIOManagerStateStarted;
         
@@ -154,13 +165,17 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
         }
         
         // the input stream is not in our way we can start the output stream
-        [self.sdlManager.streamManager.audioManager playNextWhenReady];
+        self.sdlManager.streamManager.audioManager.queue.suspended = NO;
     }
 }
 
 - (void)sdl_stopOutputStream {
+    SDLLogV(@"Audio IO manager %s", __FUNCTION__);
     // queue is now empty. stop the output stream
     self.outputStreamState = SDLAudioIOManagerStateStopped;
+    
+    // suspend the output manager (so that new output can be added but is not immediately played)
+    self.sdlManager.streamManager.audioManager.queue.suspended = YES;
     
     if ([self.delegate respondsToSelector:@selector(audioManagerDidStopOutputStream:)]) {
         [self.delegate audioManagerDidStopOutputStream:self];
@@ -168,47 +183,56 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     
     // possible that the input stream is paused. resume it
     if (self.inputStreamState == SDLAudioIOManagerStatePaused) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), self.dispatchQueue, ^{
             [self sdl_startInputStream];
         });
     }
 }
 
 - (void)sdl_continueOutputStream:(SDLAudioStreamManager * _Nonnull)audioManager {
-    if (audioManager.queue.count > 0) {
-        // continue dequeuing
-        [audioManager playNextWhenReady];
-    } else {
-        [self sdl_stopOutputStream];
+    dispatch_async(self.dispatchQueue, ^{
+    BOOL operationCountZero = audioManager.queue.operationCount == 0;
+    BOOL playbackEndInPast = [audioManager.audioPlaybackEnd compare:[NSDate date]] == NSOrderedAscending;
+        
+    if (operationCountZero && playbackEndInPast) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), self.dispatchQueue, ^{
+            [self sdl_stopOutputStream];
+        });
     }
+    });
 }
 
 - (void)audioStreamManager:(SDLAudioStreamManager *)audioManager fileDidFinishPlaying:(NSURL *)fileURL successfully:(BOOL)successfully {
+    dispatch_async(self.dispatchQueue, ^{
     if ([self.delegate respondsToSelector:@selector(audioManager:didFinishPlayingURL:)]) {
         [self.delegate audioManager:self didFinishPlayingURL:fileURL];
     }
     
     [self sdl_continueOutputStream:audioManager];
+    });
 }
 
 - (void)audioStreamManager:(SDLAudioStreamManager *)audioManager errorDidOccurForFile:(NSURL *)fileURL error:(NSError *)error {
+    dispatch_async(self.dispatchQueue, ^{
     if ([self.delegate respondsToSelector:@selector(audioManager:errorDidOccurForURL:error:)]) {
         [self.delegate audioManager:self errorDidOccurForURL:fileURL error:error];
     }
     
     if ([error.domain isEqualToString:SDLErrorDomainAudioStreamManager] && error.code == SDLAudioStreamManagerErrorNotConnected) {
-        [audioManager stop];
+        [audioManager.queue cancelAllOperations];
         [self sdl_stopOutputStream];
     } else {
         [self sdl_continueOutputStream:audioManager];
     }
+    });
 }
 
 #pragma mark- Input stream area
 
 - (void)startInputStream {
+    dispatch_async(self.dispatchQueue, ^{
     if (self.inputStreamState != SDLAudioIOManagerStateStopped && self.inputStreamState != SDLAudioIOManagerStatePaused) {
-        SDLLogW(@"AudioManager error. Start input stream not valid. Current input stream state is %li", (long)self.inputStreamState);
+        SDLLogW(@"Audio IO manager: Error: Start input stream not valid. Current input stream state is %li", (long)self.inputStreamState);
         return;
     }
     
@@ -217,11 +241,36 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     } else {
         [self sdl_startInputStream];
     }
+    });
+}
+
+- (void)stopInputStream {
+    dispatch_async(self.dispatchQueue, ^{
+        switch (self.inputStreamState) {
+            case SDLAudioIOManagerStatePaused:
+                // stream is paused so immediately set it to stopped.
+                self.inputStreamState = SDLAudioIOManagerStateStopped;
+                break;
+            case SDLAudioIOManagerStatePausing:
+                // stream is pausing we already sent a end request so update the status to stopping
+                self.inputStreamState = SDLAudioIOManagerStateStopping;
+                break;
+            case SDLAudioIOManagerStateStarted:
+            case SDLAudioIOManagerStateStarting:
+                // if input stream is starting or already started we have to send a request to stop it
+                self.inputStreamState = SDLAudioIOManagerStateStopping;
+                [self.sdlManager sendRequest:[[SDLEndAudioPassThru alloc] init]];
+                break;
+            default:
+                // other states are irrelevant
+                break;
+        }
+    });
 }
 
 - (void)sdl_startInputStream {
     if (self.inputStreamState != SDLAudioIOManagerStateStopped && self.inputStreamState != SDLAudioIOManagerStatePaused) {
-        SDLLogW(@"AudioManager error. Start input stream (internal) not valid. Current input stream state is %li", (long)self.inputStreamState);
+        SDLLogW(@"Audio IO manager: Error: Start input stream (internal) not valid. Current input stream state is %li", (long)self.inputStreamState);
         return;
     }
     
@@ -267,99 +316,92 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
             return;
         }
         
-        __strong id<SDLAudioIOManagerDelegate> d = strongSelf.delegate;
-        
-        if (strongSelf.inputStreamState == SDLAudioIOManagerStateStarting) {
-            strongSelf.inputStreamState = SDLAudioIOManagerStateStarted;
-            
-            if (d && [d respondsToSelector:@selector(audioManager:didStartInputStreamWithOptions:)]) {
-                [d audioManager:strongSelf didStartInputStreamWithOptions:audioOptions];
-            }
-        }
-        
-        if (strongSelf.inputStreamState == SDLAudioIOManagerStateStarted) {
-            if (d && [d respondsToSelector:@selector(audioManager:didReceiveAudioData:)]) {
-                NSMutableData *mutableAudioData = [audioData mutableCopy];
-                double factor = [strongSelf sdl_calculateAmplifierFactor:[mutableAudioData bytes] size:mutableAudioData.length];
-                
-                if (factor > strongSelf.inputStreamAmplifierFactor) {
-                    strongSelf.inputStreamAmplifierFactor = MIN(MIN(factor, strongSelf.inputStreamAmplifierFactor + INPUT_STREAM_AMPLIFIER_INCREASE_STEP), INPUT_STREAM_AMPLIFIER_FACTOR_MAX);
-                } else {
-                    strongSelf.inputStreamAmplifierFactor = factor;
-                }
-                
-                [strongSelf sdl_applyAmplifierFactor:strongSelf.inputStreamAmplifierFactor data:[mutableAudioData mutableBytes] size:mutableAudioData.length];
-                
-                [d audioManager:strongSelf didReceiveAudioData:mutableAudioData];
-            }
-        }
+        dispatch_async(strongSelf.dispatchQueue, ^{
+        [strongSelf sdl_handleInputStreamData:audioData];
+        });
     };
     
     // send the request out to the head unit
-    SDLLogV(@"Sending request %@", [performAudioInput serializeAsDictionary:0]);
+    SDLLogV(@"Audio IO manager: Sending request %@", [performAudioInput serializeAsDictionary:0]);
     [self.sdlManager sendRequest:performAudioInput withResponseHandler:^(__kindof SDLRPCRequest * _Nullable request, __kindof SDLRPCResponse * _Nullable response, NSError * _Nullable error) {
-        SDLLogV(@"Response received %@", [response serializeAsDictionary:0]);
+        SDLLogV(@"Audio IO manager: Response received %@", [response serializeAsDictionary:0]);
         __strong SDLAudioIOManager * strongSelf = weakSelf;
         if (strongSelf == nil) {
             return;
         }
         
-        if (strongSelf.inputStreamState == SDLAudioIOManagerStateStarting && [response.resultCode isEqualToEnum:SDLResultRejected] && self.inputStreamRetryCounter < 3) {
-            // this state can be true if the request is rejected so we set the state back to paused and retry in a bit
-            self.inputStreamRetryCounter++;
-            strongSelf.inputStreamState = SDLAudioIOManagerStatePaused;
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                [strongSelf sdl_startInputStream];
-            });
-            // do not notify that it didn't work
-            return;
-        } else if (strongSelf.inputStreamState == SDLAudioIOManagerStatePausing) {
-            // the response is received because we wanted to pause the input stream
-            strongSelf.inputStreamState = SDLAudioIOManagerStatePaused;
-        } else {
-            // the input stream was started (or even stopping) and now we want to finally stop it
-            strongSelf.inputStreamState = SDLAudioIOManagerStateStopped;
-        }
-        
-        // reset the retry counter in case previous tries were rejected
-        self.inputStreamRetryCounter = 0;
-        
-        // notify about the result (except it was rejected and we want to retry
-        __strong id<SDLAudioIOManagerDelegate> d = strongSelf.delegate;
-        if (d && [d respondsToSelector:@selector(audioManager:didFinishInputStreamWithResult:)]) {
-            [d audioManager:strongSelf didFinishInputStreamWithResult:response.resultCode];
-        }
-        
-        // if output stream is starting. now it's time to do so.
-        if (strongSelf.outputStreamState == SDLAudioIOManagerStateStarting) {
-            [strongSelf sdl_startOutputStream];
-        }
+        dispatch_async(strongSelf.dispatchQueue, ^{
+            [strongSelf sdl_handleInputStreamResponse:response.resultCode];
+        });
     }];
 }
 
-- (void)stopInputStream {
-    switch (self.inputStreamState) {
-        case SDLAudioIOManagerStatePaused:
-            // stream is paused so immediately set it to stopped.
-            self.inputStreamState = SDLAudioIOManagerStateStopped;
-            break;
-        case SDLAudioIOManagerStatePausing:
-            // stream is pausing we already sent a end request so update the status to stopping
-            self.inputStreamState = SDLAudioIOManagerStateStopping;
-            break;
-        case SDLAudioIOManagerStateStarted:
-        case SDLAudioIOManagerStateStarting:
-            // if input stream is starting or already started we have to send a request to stop it
-            self.inputStreamState = SDLAudioIOManagerStateStopping;
-            [self.sdlManager sendRequest:[[SDLEndAudioPassThru alloc] init]];
-            break;
-        default:
-            // other states are irrelevant
-            break;
+- (void)sdl_handleInputStreamData:(nonnull NSData *)audioData {
+    SDLLogV(@"Audio IO manager %s", __FUNCTION__);
+    __strong id<SDLAudioIOManagerDelegate> d = self.delegate;
+    
+    if (self.inputStreamState == SDLAudioIOManagerStateStarting) {
+        self.inputStreamState = SDLAudioIOManagerStateStarted;
+        
+        if (d && [d respondsToSelector:@selector(audioManager:didStartInputStreamWithOptions:)]) {
+            [d audioManager:self didStartInputStreamWithOptions:self.inputStreamOptions];
+        }
+    }
+    
+    if (self.inputStreamState == SDLAudioIOManagerStateStarted) {
+        if (d && [d respondsToSelector:@selector(audioManager:didReceiveAudioData:)]) {
+            NSMutableData *mutableAudioData = [audioData mutableCopy];
+            double factor = [self sdl_calculateAmplifierFactor:[mutableAudioData bytes] size:mutableAudioData.length];
+            
+            if (factor > self.inputStreamAmplifierFactor) {
+                self.inputStreamAmplifierFactor = MIN(MIN(factor, self.inputStreamAmplifierFactor + INPUT_STREAM_AMPLIFIER_INCREASE_STEP), INPUT_STREAM_AMPLIFIER_FACTOR_MAX);
+            } else {
+                self.inputStreamAmplifierFactor = factor;
+            }
+            
+            [self sdl_applyAmplifierFactor:self.inputStreamAmplifierFactor data:[mutableAudioData mutableBytes] size:mutableAudioData.length];
+            
+            [d audioManager:self didReceiveAudioData:mutableAudioData];
+        }
+    }
+}
+
+- (void)sdl_handleInputStreamResponse:(nonnull SDLResult)resultCode {
+    SDLLogV(@"Audio IO manager %s", __FUNCTION__);
+    if (self.inputStreamState == SDLAudioIOManagerStateStarting && [resultCode isEqualToEnum:SDLResultRejected] && self.inputStreamRetryCounter < 3) {
+        // this state can be true if the request is rejected so we set the state back to paused and retry in a bit
+        self.inputStreamRetryCounter++;
+        self.inputStreamState = SDLAudioIOManagerStatePaused;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), self.dispatchQueue, ^{
+            [self sdl_startInputStream];
+        });
+        // do not notify that it didn't work
+        return;
+    } else if (self.inputStreamState == SDLAudioIOManagerStatePausing) {
+        // the response is received because we wanted to pause the input stream
+        self.inputStreamState = SDLAudioIOManagerStatePaused;
+    } else {
+        // the input stream was started (or even stopping) and now we want to finally stop it
+        self.inputStreamState = SDLAudioIOManagerStateStopped;
+    }
+    
+    // reset the retry counter in case previous tries were rejected
+    self.inputStreamRetryCounter = 0;
+    
+    // notify about the result (except it was rejected and we want to retry
+    __strong id<SDLAudioIOManagerDelegate> d = self.delegate;
+    if (d && [d respondsToSelector:@selector(audioManager:didFinishInputStreamWithResult:)]) {
+        [d audioManager:self didFinishInputStreamWithResult:resultCode];
+    }
+    
+    // if output stream is starting. now it's time to do so.
+    if (self.outputStreamState == SDLAudioIOManagerStateStarting) {
+        [self sdl_startOutputStream];
     }
 }
 
 - (void)sdl_pauseInputStream {
+    SDLLogV(@"Audio IO manager %s", __FUNCTION__);
     switch (self.inputStreamState) {
         case SDLAudioIOManagerStateStarted:
         case SDLAudioIOManagerStateStarting:

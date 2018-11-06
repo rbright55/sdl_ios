@@ -287,21 +287,24 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
     [self sdl_sendRequest:regRequest
         withResponseHandler:^(__kindof SDLRPCRequest *_Nullable request, __kindof SDLRPCResponse *_Nullable response, NSError *_Nullable error) {
             dispatch_async(weakSelf.lifecycleQueue, ^{
+                __strong typeof(self) strongSelf = weakSelf;
+                if (!strongSelf) return;
+                
                 // If the success BOOL is NO or we received an error at this point, we failed. Call the ready handler and transition to the DISCONNECTED state.
                 if (error != nil || ![response.success boolValue]) {
                     SDLLogE(@"Failed to register the app. Error: %@, Response: %@", error, response);
-                    weakSelf.readyHandler(NO, error);
+                    strongSelf.readyHandler(NO, error);
 
-                    if (weakSelf.lifecycleState != SDLLifecycleStateReconnecting) {
-                        [weakSelf sdl_transitionToState:SDLLifecycleStateStopped];
+                    if (strongSelf.lifecycleState != SDLLifecycleStateReconnecting) {
+                        [strongSelf sdl_transitionToState:SDLLifecycleStateStopped];
                     }
 
                     return;
                 }
 
-                weakSelf.registerResponse = (SDLRegisterAppInterfaceResponse *)response;
-                [SDLGlobals sharedGlobals].rpcVersion = weakSelf.registerResponse.syncMsgVersion;
-                [weakSelf sdl_transitionToState:SDLLifecycleStateRegistered];
+                strongSelf.registerResponse = (SDLRegisterAppInterfaceResponse *)response;
+                [SDLGlobals sharedGlobals].rpcVersion = strongSelf.registerResponse.syncMsgVersion;
+                [strongSelf sdl_transitionToState:SDLLifecycleStateRegistered];
             });
         }];
 }

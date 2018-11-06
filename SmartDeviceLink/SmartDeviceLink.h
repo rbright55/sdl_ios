@@ -336,8 +336,8 @@ FOUNDATION_EXPORT const unsigned char SmartDeviceLinkVersionString[];
 // Streaming
 #import "SDLAudioIOManager.h"
 #import "SDLAudioIOManagerDelegate.h"
-#import "SDLAudioStreamManager.h"
-#import "SDLAudioStreamManagerDelegate.h"
+//#import "SDLAudioStreamManager.h"
+//#import "SDLAudioStreamManagerDelegate.h"
 #import "SDLCarWindowViewController.h"
 #import "SDLStreamingAudioManagerType.h"
 #import "SDLStreamingMediaManager.h"

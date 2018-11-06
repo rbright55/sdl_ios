@@ -57,6 +57,10 @@ NS_ASSUME_NONNULL_BEGIN
     return 0;
 }
 
+- (NSString *)description {
+    return [NSString stringWithFormat:@"<SDLAudioFile: .name: \"%@\", .data.length: %lu", self.name, (unsigned long)self.data.length];
+}
+
 @end
 
 NS_ASSUME_NONNULL_END
