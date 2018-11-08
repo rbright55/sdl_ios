@@ -115,7 +115,7 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
     _lifecycleStateMachine = [[SDLStateMachine alloc] initWithTarget:self initialState:SDLLifecycleStateStopped states:[self.class sdl_stateTransitionDictionary]];
     _lastCorrelationId = 0;
     _notificationDispatcher = [[SDLNotificationDispatcher alloc] init];
-    _responseDispatcher = [[SDLResponseDispatcher alloc] initWithNotificationDispatcher:_notificationDispatcher];
+    _responseDispatcher = [[SDLResponseDispatcher alloc] init];
     _registerResponse = nil;
 
     _rpcOperationQueue = [[NSOperationQueue alloc] init];
