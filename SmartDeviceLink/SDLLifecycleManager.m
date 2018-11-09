@@ -7,6 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <ExternalAccessory/ExternalAccessory.h>
 
 #import "SDLLifecycleManager.h"
 
@@ -634,6 +635,20 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
 
 - (void)transportDidConnect {
     SDLLogD(@"Transport connected");
+    
+    if (![self.lifecycleStateMachine isCurrentState:SDLLifecycleStateStarted]) {
+        NSMutableString *accessorynames = [NSMutableString stringWithCapacity:1000];
+        NSArray<EAAccessory *> *accessories = [[EAAccessoryManager sharedAccessoryManager] connectedAccessories];
+        for (EAAccessory *accessory in accessories) {
+            if (accessorynames.length > 0) [accessorynames appendString:@" | "];
+            [accessorynames appendString:accessory.modelNumber];
+            [accessorynames appendString:@" ("];
+            [accessorynames appendString:accessory.firmwareRevision];
+            [accessorynames appendString:@")"];
+        }
+        SDLLogE(@"Error. Transport did connect message but lifecycle manager is in state %@. Connected accessories: %@", self.lifecycleState, accessorynames);
+        return;
+    }
 
     dispatch_async(self.lifecycleQueue, ^{
         [self sdl_transitionToState:SDLLifecycleStateConnected];

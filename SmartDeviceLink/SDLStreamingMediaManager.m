@@ -15,6 +15,7 @@
 #import "SDLStreamingAudioLifecycleManager.h"
 #import "SDLStreamingVideoLifecycleManager.h"
 #import "SDLTouchManager.h"
+#import "SDLLogMacros.h"
 
 
 NS_ASSUME_NONNULL_BEGIN
@@ -44,6 +45,10 @@ NS_ASSUME_NONNULL_BEGIN
     _videoLifecycleManager = [[SDLStreamingVideoLifecycleManager alloc] initWithConnectionManager:connectionManager configuration:configuration];
 
     return self;
+}
+
+- (void)dealloc {
+    SDLLogV(@"Deallocating %@", NSStringFromClass(self.class));
 }
 
 - (void)startWithProtocol:(SDLProtocol *)protocol {

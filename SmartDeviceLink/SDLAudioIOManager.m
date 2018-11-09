@@ -38,7 +38,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 @property (assign, nonatomic) SDLAudioIOManagerState inputStreamState;
 
 @property (strong, nonatomic, nullable) SDLAudioPassThruCapabilities *inputStreamOptions;
-@property (strong, nonatomic, nullable) NSNumber<SDLInt> *inputStreamCorrelationID;
+@property (strong, nonatomic, nullable) SDLAsynchronousRPCRequestOperation *inputStreamOperation;
 @property (assign, nonatomic) double inputStreamAmplifierFactor;
 @property (assign, nonatomic) NSUInteger inputStreamRetryCounter;
 
@@ -140,7 +140,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 
         // in case the input stream is active we have to get it to pause
         if (self.inputStreamState == SDLAudioIOManagerStateStarting) {
-            [self sdl_abortPendingInputStream];
+            [self sdl_abortStartingInputStream];
             return;
         } else if (self.inputStreamState == SDLAudioIOManagerStateStarted) {
             // we should pause the playback and wait for being called again.
@@ -241,7 +241,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
         // special case where the app wants to start the input stream while it's starting
         // either this is an app bug (unlikely and it'll be very visible bug)
         // or core did not response to PerformAudioPassThru (then we need to recover)
-        [self sdl_abortPendingInputStream];
+        [self sdl_abortStartingInputStream];
         // this will add another start approach to the synchronous dispatch queue
         [self startInputStream];
         return;
@@ -264,26 +264,29 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     dispatch_async(self.dispatchQueue, ^{
         SDLLogV(@"Audio IO manager: %s", __FUNCTION__);
         switch (self.inputStreamState) {
-            case SDLAudioIOManagerStatePaused:
+            case SDLAudioIOManagerStatePaused: {
                 // stream is paused so immediately set it to stopped.
                 self.inputStreamState = SDLAudioIOManagerStateStopped;
                 break;
-            case SDLAudioIOManagerStatePausing:
+            }
+            case SDLAudioIOManagerStatePausing: {
                 // stream is pausing we already sent a end request so update the status to stopping
                 self.inputStreamState = SDLAudioIOManagerStateStopping;
                 break;
-            case SDLAudioIOManagerStateStarted:
+            }
+            case SDLAudioIOManagerStateStarted: {
                 // if input stream is starting or already started we have to send a request to stop it
-                self.inputStreamState = SDLAudioIOManagerStateStopping;
-                [self.sdlManager sendRequest:[[SDLEndAudioPassThru alloc] init]];
+                [self sdl_stopInputStream];
                 break;
-            case SDLAudioIOManagerStateStarting:
-                self.inputStreamState = SDLAudioIOManagerStateStopping;
-                [self sdl_abortPendingInputStream];
+            }
+            case SDLAudioIOManagerStateStarting: {
+                [self sdl_abortStartingInputStream];
                 break;
-            default:
+            }
+            default: {
                 // other states are irrelevant
                 break;
+            }
         }
     });
 }
@@ -357,7 +360,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
             return;
         }
         
-        self.inputStreamCorrelationID = nil;
+        self.inputStreamOperation = nil;
         SDLResult result = response ? response.resultCode : SDLResultTimedOut;
         
         dispatch_async(strongSelf.dispatchQueue, ^{
@@ -372,10 +375,16 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
         if ([operation isKindOfClass:[SDLAsynchronousRPCRequestOperation class]]) {
             SDLAsynchronousRPCRequestOperation *rpcOperation = (SDLAsynchronousRPCRequestOperation *)operation;
             if (rpcOperation.requests.count == 1 && [rpcOperation.requests[0] isEqual:performAudioInput]) {
-                self.inputStreamCorrelationID = rpcOperation.requests[0].correlationID;
+                self.inputStreamOperation = rpcOperation;
                 break;
             }
         }
+    }
+    
+    if (self.inputStreamOperation) {
+        SDLLogV(@"Audio IO Manager: Found the operation of Input Stream");
+    } else {
+        SDLLogW(@"Audio IO Manager: Warning: No operation found for Input Stream");
     }
 }
 
@@ -445,33 +454,56 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 
 - (void)sdl_pauseInputStream {
     SDLLogV(@"Audio IO manager %s", __FUNCTION__);
-    self.inputStreamState = SDLAudioIOManagerStatePausing;
     
     switch (self.inputStreamState) {
-        case SDLAudioIOManagerStateStarting:
+        case SDLAudioIOManagerStateStarting: {
+            self.inputStreamState = SDLAudioIOManagerStatePausing;
             // input stream is starting. chances are high that the response is in limbo. need to abort it
-            [self sdl_abortPendingInputStream];
-        case SDLAudioIOManagerStateStarted:
+            [self sdl_abortStartingInputStream];
+            break;
+        }
+        case SDLAudioIOManagerStateStarted: {
+            self.inputStreamState = SDLAudioIOManagerStatePausing;
             // if input stream is started we have to send a request to stop it but the status will be pausing (or paused later on)
             [self.sdlManager sendRequest:[[SDLEndAudioPassThru alloc] init]];
             break;
-        default:
+        }
+        default: {
             // other states are irrelevant
             break;
+        }
     }
 }
 
-- (void)sdl_abortPendingInputStream {
-    if (self.inputStreamCorrelationID == nil) return;
+- (void)sdl_stopInputStream {
+    self.inputStreamState = SDLAudioIOManagerStateStopping;
+    [self.sdlManager sendRequest:[[SDLEndAudioPassThru alloc] init]];
+}
+
+- (BOOL)sdl_abortStartingInputStream {
+    SDLLogV(@"Audio IO Manager: %s", __FUNCTION__);
+    if (self.inputStreamState != SDLAudioIOManagerStateStarting) {
+        SDLLogW(@"Audio IO Manager: Warning: Input stream can only aborted when \"Starting\". Current state %@", [self nameForStreamState:self.inputStreamState]);
+        return NO;
+    }
+    
+    if (self.inputStreamOperation == nil) {
+        SDLLogW(@"Audio IO Manager: Warning: Cannot abort pending input stream without correlation ID");
+        return NO;
+    }
+    
+    self.inputStreamState = SDLAudioIOManagerStateStopping;
     
     SDLPerformAudioPassThruResponse *response = [[SDLPerformAudioPassThruResponse alloc] init];
-    response.correlationID = self.inputStreamCorrelationID;
+    response.correlationID = self.inputStreamOperation.requests[0].correlationID;
     response.resultCode = SDLResultAborted;
     response.success = @NO;
     
     // WORKAROUND this will notify the RPC dispatcher
     SDLRPCResponseNotification *notification = [[SDLRPCResponseNotification alloc] initWithName:SDLDidReceivePerformAudioPassThruResponse object:self rpcResponse:response];
     [[NSNotificationCenter defaultCenter] postNotification:notification];
+    
+    return YES;
 }
 
 - (double)sdl_calculateAmplifierFactor:(const void *)bytedata size:(NSUInteger)size {
