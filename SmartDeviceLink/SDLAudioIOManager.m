@@ -477,6 +477,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 
 - (void)sdl_stopInputStream {
     self.inputStreamState = SDLAudioIOManagerStateStopping;
+    
     [self.sdlManager sendRequest:[[SDLEndAudioPassThru alloc] init]];
 }
 
@@ -529,10 +530,10 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
         }
     } else {
         // create pointer with byte type (signed byte int)
-        int8_t *bytebuffer = (int8_t *)bytedata;
+        uint8_t *bytebuffer = (uint8_t *)bytedata;
         
         for (int i = 0; i < size; i++) {
-            int8_t a = bytebuffer[i];
+            int8_t a = (int8_t)((int16_t)bytebuffer[i] - (int16_t)127);
             double f;
             if (a >= 0) {
                 f = ((double)INT8_MAX) / ((double)a);
@@ -568,17 +569,17 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
             shortbuffer[i] = a;
         }
     } else {
-        // create pointer with byte type (signed byte int)
-        int8_t *bytebuffer = (int8_t *)bytedata;
+        // create pointer with byte type (unsigned signed byte int)
+        uint8_t *bytebuffer = (uint8_t *)bytedata;
         
         // loop through all samples
         for (int i = 0; i < size; i++) {
             // get the sample value
-            int8_t a = bytebuffer[i];
+            int8_t a = (int8_t)((int16_t)bytebuffer[i] - (int16_t)127);
             // apply the amplifier factor with the best precision and round it
             a = (int8_t)(round(((double)a) * factor));
             // write the amplified sample value back to the buffer
-            bytebuffer[i] = a;
+            bytebuffer[i] = (uint8_t)((int16_t)a + (int16_t)127);
         }
     }
 }
