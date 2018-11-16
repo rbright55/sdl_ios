@@ -121,10 +121,6 @@ static NSUInteger const MaximumNumberOfTouches = 2;
     return self;
 }
 
-- (void)dealloc {
-    SDLLogV(@"Deallocating %@", NSStringFromClass(self.class));
-}
-
 #pragma mark - Public
 - (void)cancelPendingTouches {
     [self sdl_cancelSingleTapTimer];

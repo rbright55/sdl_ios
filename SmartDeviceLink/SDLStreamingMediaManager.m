@@ -48,7 +48,8 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (void)dealloc {
-    SDLLogV(@"Deallocating %@", NSStringFromClass(self.class));
+    [_audioLifecycleManager stop];
+    [_videoLifecycleManager stop];
 }
 
 - (void)startWithProtocol:(SDLProtocol *)protocol {
