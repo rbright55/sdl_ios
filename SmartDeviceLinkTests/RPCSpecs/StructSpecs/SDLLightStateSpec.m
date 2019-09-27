@@ -11,7 +11,7 @@
 #import "SDLLightStatus.h"
 #import "SDLRGBColor.h"
 #import "SDLLightName.h"
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
 
 QuickSpecBegin(SDLLightStateSpec)
 
@@ -63,12 +63,15 @@ describe(@"Getter/Setter Tests", ^ {
     });
 
     it(@"Should get correctly when initialized", ^ {
-        NSMutableDictionary* dict = [@{SDLNameId:SDLLightNameFogLights,
-                                       SDLNameStatus:SDLLightStatusOn,
-                                       SDLNameDensity:@(0.5),
-                                       SDLNameColor:someRGBColor} mutableCopy];
+        NSMutableDictionary* dict = [@{SDLRPCParameterNameId:SDLLightNameFogLights,
+                                       SDLRPCParameterNameStatus:SDLLightStatusOn,
+                                       SDLRPCParameterNameDensity:@(0.5),
+                                       SDLRPCParameterNameColor:someRGBColor} mutableCopy];
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLLightState* testStruct = [[SDLLightState alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
 
         expect(testStruct.id).to(equal(SDLLightNameFogLights));
         expect(testStruct.status).to(equal(SDLLightStatusOn));

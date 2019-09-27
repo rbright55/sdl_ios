@@ -10,7 +10,8 @@
 
 #import "SDLAddSubMenu.h"
 #import "SDLImage.h"
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
+#import "SDLRPCFunctionNames.h"
 
 QuickSpecBegin(SDLAddSubMenuSpec)
 
@@ -69,17 +70,20 @@ describe(@"Getter/Setter Tests", ^ {
     });
     
     it(@"Should get correctly when initialized", ^ {
-        NSMutableDictionary<NSString *, id> *dict = [@{SDLNameRequest:
-                                                           @{SDLNameParameters:
-                                                                 @{SDLNameMenuId:@4345645,
-                                                                   SDLNamePosition:@27,
-                                                                   SDLNameMenuName:@"Welcome to the menu",
-                                                                   SDLNameMenuIcon: @{
-                                                                           SDLNameValue: @"Test"
+        NSMutableDictionary<NSString *, id> *dict = [@{SDLRPCParameterNameRequest:
+                                                           @{SDLRPCParameterNameParameters:
+                                                                 @{SDLRPCParameterNameMenuId:@4345645,
+                                                                   SDLRPCParameterNamePosition:@27,
+                                                                   SDLRPCParameterNameMenuName:@"Welcome to the menu",
+                                                                   SDLRPCParameterNameMenuIcon: @{
+                                                                           SDLRPCParameterNameValue: @"Test"
                                                                            }
                                                                    },
-                                                             SDLNameOperationName:SDLNameAddSubMenu}} mutableCopy];
+                                                             SDLRPCParameterNameOperationName:SDLRPCFunctionNameAddSubMenu}} mutableCopy];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLAddSubMenu* testRequest = [[SDLAddSubMenu alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
 
         expect(testRequest.menuID).to(equal(@(menuId)));
         expect(testRequest.position).to(equal(@(position)));

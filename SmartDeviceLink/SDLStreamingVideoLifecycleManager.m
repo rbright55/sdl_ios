@@ -10,6 +10,7 @@
 
 #import "CVPixelBufferRef+SDLUtil.h"
 #import "SDLCarWindow.h"
+#import "SDLConfiguration.h"
 #import "SDLConnectionManagerType.h"
 #import "SDLControlFramePayloadConstants.h"
 #import "SDLControlFramePayloadNak.h"
@@ -26,6 +27,7 @@
 #import "SDLHMILevel.h"
 #import "SDLHMIPermissions.h"
 #import "SDLImageResolution.h"
+#import "SDLLifecycleConfiguration.h"
 #import "SDLLogMacros.h"
 #import "SDLOnHMIStatus.h"
 #import "SDLOnPermissionsChange.h"
@@ -72,18 +74,30 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
 @property (copy, nonatomic) NSArray<NSString *> *secureMakes;
 @property (copy, nonatomic) NSString *connectedVehicleMake;
 
+@property (copy, nonatomic, readonly) NSString *appName;
 @property (assign, nonatomic) CV_NULLABLE CVPixelBufferRef backgroundingPixelBuffer;
 
 @property (strong, nonatomic, nullable) CADisplayLink *displayLink;
 @property (assign, nonatomic) BOOL useDisplayLink;
 
+/**
+ * SSRC of RTP header field.
+ *
+ * SSRC field identifies the source of a stream and it should be
+ * chosen randomly (see section 3 and 5.1 in RFC 3550).
+ *
+ * @note A random value is generated and used as default.
+ */
+@property (assign, nonatomic) UInt32 ssrc;
 @property (assign, nonatomic) CMTime lastPresentationTimestamp;
+
+@property (copy, nonatomic, readonly) NSString *videoStreamBackgroundString;
 
 @end
 
 @implementation SDLStreamingVideoLifecycleManager
 
-- (instancetype)initWithConnectionManager:(id<SDLConnectionManagerType>)connectionManager configuration:(SDLStreamingMediaConfiguration *)configuration {
+- (instancetype)initWithConnectionManager:(id<SDLConnectionManagerType>)connectionManager configuration:(SDLConfiguration *)configuration {
     self = [super init];
     if (!self) {
         return nil;
@@ -91,26 +105,27 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
 
     SDLLogV(@"Creating StreamingLifecycleManager");
 
+    _appName = configuration.lifecycleConfig.appName;
     _connectionManager = connectionManager;
-    _videoEncoderSettings = configuration.customVideoEncoderSettings ?: SDLH264VideoEncoder.defaultVideoEncoderSettings;
+    _videoEncoderSettings = configuration.streamingMediaConfig.customVideoEncoderSettings ?: SDLH264VideoEncoder.defaultVideoEncoderSettings;
 
-    if (configuration.rootViewController != nil) {
-        NSAssert(configuration.enableForcedFramerateSync, @"When using CarWindow (rootViewController != nil), forceFrameRateSync must be YES");
+    if (configuration.streamingMediaConfig.rootViewController != nil) {
+        NSAssert(configuration.streamingMediaConfig.enableForcedFramerateSync, @"When using CarWindow (rootViewController != nil), forceFrameRateSync must be YES");
         if (@available(iOS 9.0, *)) {
             SDLLogD(@"Initializing focusable item locator");
-            _focusableItemManager = [[SDLFocusableItemLocator alloc] initWithViewController:configuration.rootViewController connectionManager:_connectionManager];
+            _focusableItemManager = [[SDLFocusableItemLocator alloc] initWithViewController:configuration.streamingMediaConfig.rootViewController connectionManager:_connectionManager];
         }
 
         SDLLogD(@"Initializing CarWindow");
-        _carWindow = [[SDLCarWindow alloc] initWithStreamManager:self configuration:configuration];
-        _carWindow.rootViewController = configuration.rootViewController;
+        _carWindow = [[SDLCarWindow alloc] initWithStreamManager:self configuration:configuration.streamingMediaConfig];
+        _carWindow.rootViewController = configuration.streamingMediaConfig.rootViewController;
     }
 
     _touchManager = [[SDLTouchManager alloc] initWithHitTester:(id)_focusableItemManager];
 
-    _requestedEncryptionType = configuration.maximumDesiredEncryption;
-    _dataSource = configuration.dataSource;
-    _useDisplayLink = configuration.enableForcedFramerateSync;
+    _requestedEncryptionType = configuration.streamingMediaConfig.maximumDesiredEncryption;
+    _dataSource = configuration.streamingMediaConfig.dataSource;
+    _useDisplayLink = configuration.streamingMediaConfig.enableForcedFramerateSync;
     _screenSize = SDLDefaultScreenSize;
     _backgroundingPixelBuffer = NULL;
     _preferredFormatIndex = 0;
@@ -123,7 +138,7 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     _videoStreamPermissionGranted = NO;
     
     NSMutableArray<NSString *> *tempMakeArray = [NSMutableArray array];
-    for (Class securityManagerClass in configuration.securityManagers) {
+    for (Class securityManagerClass in configuration.streamingMediaConfig.securityManagers) {
         [tempMakeArray addObjectsFromArray:[securityManagerClass availableMakes].allObjects];
     }
     _secureMakes = [tempMakeArray copy];
@@ -150,6 +165,7 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(sdl_appStateDidUpdate:) name:UIApplicationDidBecomeActiveNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(sdl_appStateDidUpdate:) name:UIApplicationWillResignActiveNotification object:nil];
 
+    _ssrc = arc4random_uniform(UINT32_MAX);
     _lastPresentationTimestamp = kCMTimeInvalid;
 
     return self;
@@ -308,6 +324,13 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
              };
 }
 
+- (void)disposeDisplayLink {
+    if (self.displayLink != nil) {
+        [self.displayLink invalidate];
+        self.displayLink = nil;
+    }
+}
+
 - (void)didEnterStateVideoStreamStopped {
     SDLLogD(@"Video stream stopped");
     _videoEncrypted = NO;
@@ -377,7 +400,7 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
         [self.videoEncoder stop];
         self.videoEncoder = nil;
     }
-    
+        
     [self disposeDisplayLink];
 
     if (self.videoEncoder == nil) {
@@ -385,7 +408,7 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
         NSAssert(self.videoFormat != nil, @"No video format is known, but it must be if we got a protocol start service response");
 
         SDLLogD(@"Attempting to create video encoder");
-        self.videoEncoder = [[SDLH264VideoEncoder alloc] initWithProtocol:self.videoFormat.protocol dimensions:self.screenSize properties:self.videoEncoderSettings delegate:self error:&error];
+        self.videoEncoder = [[SDLH264VideoEncoder alloc] initWithProtocol:self.videoFormat.protocol dimensions:self.screenSize ssrc:self.ssrc properties:self.videoEncoderSettings delegate:self error:&error];
 
         if (error || self.videoEncoder == nil) {
             SDLLogE(@"Could not create a video encoder: %@", error);
@@ -426,24 +449,16 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     }
 }
 
-- (void)disposeDisplayLink {
-    if (self.displayLink != nil) {
-        [self.displayLink invalidate];
-        self.displayLink = nil;
-    }
-}
-
 - (void)didEnterStateVideoStreamSuspended {
     SDLLogD(@"Video stream suspended");
 
     [self disposeDisplayLink];
-    
+        
     [[NSNotificationCenter defaultCenter] postNotificationName:SDLVideoStreamSuspendedNotification object:nil];
 }
 
 - (void)didEnterStateVideoStreamShuttingDown {
     SDLLogD(@"Video stream shutting down");
-
     [self.protocol endServiceWithType:SDLServiceTypeVideo];
 }
 

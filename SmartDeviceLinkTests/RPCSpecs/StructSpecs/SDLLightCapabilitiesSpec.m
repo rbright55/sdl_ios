@@ -7,7 +7,7 @@
 #import <Quick/Quick.h>
 #import <Nimble/Nimble.h>
 
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
 #import "SDLLightName.h"
 #import "SDLLightCapabilities.h"
 
@@ -37,12 +37,15 @@ describe(@"Getter/Setter Tests", ^ {
     });
 
     it(@"Should get correctly when initialized", ^ {
-        NSMutableDictionary* dict = [@{SDLNameName:SDLLightNameFogLights,
-                                       SDLNameDensityAvailable:@YES,
-                                       SDLNameRGBColorSpaceAvailable:@NO
+        NSMutableDictionary* dict = [@{SDLRPCParameterNameName:SDLLightNameFogLights,
+                                       SDLRPCParameterNameDensityAvailable:@YES,
+                                       SDLRPCParameterNameRGBColorSpaceAvailable:@NO
                                        } mutableCopy];
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLLightCapabilities* testStruct = [[SDLLightCapabilities alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
 
         expect(testStruct.name).to(equal(SDLLightNameFogLights));
         expect(testStruct.densityAvailable).to(equal(@YES));

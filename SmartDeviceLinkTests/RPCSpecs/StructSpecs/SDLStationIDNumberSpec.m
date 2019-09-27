@@ -8,7 +8,7 @@
 #import <Quick/Quick.h>
 #import <Nimble/Nimble.h>
 
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
 #import "SDLStationIDNumber.h"
 
 QuickSpecBegin(SDLStationIDNumberSpec)
@@ -33,11 +33,13 @@ describe(@"Getter/Setter Tests", ^ {
     });
 
     it(@"Should get correctly when initialized", ^ {
-        NSMutableDictionary* dict = [@{SDLNameCountryCode:@91,
-                                       SDLNameFCCFacilityId:@23
+        NSMutableDictionary* dict = [@{SDLRPCParameterNameCountryCode:@91,
+                                       SDLRPCParameterNameFCCFacilityId:@23
                                        } mutableCopy];
-
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLStationIDNumber* testStruct = [[SDLStationIDNumber alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
 
         expect(testStruct.countryCode).to(equal(@91));
         expect(testStruct.fccFacilityId).to(equal(@23));

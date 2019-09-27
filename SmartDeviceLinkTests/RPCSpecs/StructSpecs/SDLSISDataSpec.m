@@ -8,7 +8,7 @@
 #import <Quick/Quick.h>
 #import <Nimble/Nimble.h>
 
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
 #import "SDLSISData.h"
 #import "SDLStationIDNumber.h"
 #import "SDLGPSData.h"
@@ -48,14 +48,16 @@ describe(@"Getter/Setter Tests", ^ {
     });
 
     it(@"Should get correctly when initialized", ^ {
-        NSMutableDictionary* dict = [@{SDLNameStationShortName:@"short",
-                                       SDLNameStationLongName:@"long",
-                                       SDLNameStationLocation:someLocation,
-                                       SDLNameStationIDNumber:someID,
-                                       SDLNameStationMessage:@"message"
+        NSMutableDictionary* dict = [@{SDLRPCParameterNameStationShortName:@"short",
+                                       SDLRPCParameterNameStationLongName:@"long",
+                                       SDLRPCParameterNameStationLocation:someLocation,
+                                       SDLRPCParameterNameStationIDNumber:someID,
+                                       SDLRPCParameterNameStationMessage:@"message"
                                        } mutableCopy];
-
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLSISData* testStruct = [[SDLSISData alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
 
         expect(testStruct.stationShortName).to(equal(@"short"));
         expect(testStruct.stationIDNumber).to(equal(someID));

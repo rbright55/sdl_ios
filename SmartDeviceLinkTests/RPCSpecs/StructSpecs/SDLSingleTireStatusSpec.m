@@ -10,7 +10,7 @@
 
 #import "SDLSingleTireStatus.h"
 #import "SDLComponentVolumeStatus.h"
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
 
 QuickSpecBegin(SDLSingleTireStatusSpec)
 
@@ -29,11 +29,14 @@ describe(@"Getter/Setter Tests", ^ {
     
     it(@"Should get correctly when initialized", ^ {
         NSDictionary* dict = @{
-                               SDLNameStatus: SDLComponentVolumeStatusLow,
-                               SDLNameTPMS: SDLTPMSLow,
-                               SDLNamePressure: @67.78
+                               SDLRPCParameterNameStatus: SDLComponentVolumeStatusLow,
+                               SDLRPCParameterNameTPMS: SDLTPMSLow,
+                               SDLRPCParameterNamePressure: @67.78
                                };
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLSingleTireStatus* testStruct = [[SDLSingleTireStatus alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
         
         expect(testStruct.status).to(equal(SDLComponentVolumeStatusLow));
         expect(testStruct.monitoringSystemStatus).to(equal(SDLTPMSLow));

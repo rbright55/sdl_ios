@@ -13,6 +13,7 @@
 
 #import "NSMapTable+Subscripting.h"
 #import "SDLAsynchronousRPCRequestOperation.h"
+#import "SDLBackgroundTaskManager.h"
 #import "SDLChangeRegistration.h"
 #import "SDLChoiceSetManager.h"
 #import "SDLConfiguration.h"
@@ -44,6 +45,7 @@
 #import "SDLRegisterAppInterface.h"
 #import "SDLRegisterAppInterfaceResponse.h"
 #import "SDLResponseDispatcher.h"
+#import "SDLAsynchronousRPCOperation.h"
 #import "SDLResult.h"
 #import "SDLScreenManager.h"
 #import "SDLSecondaryTransportManager.h"
@@ -55,7 +57,7 @@
 #import "SDLStreamingProtocolDelegate.h"
 #import "SDLSystemCapabilityManager.h"
 #import "SDLUnregisterAppInterface.h"
-
+#import "SDLVersion.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -71,12 +73,15 @@ SDLLifecycleState *const SDLLifecycleStateSettingUpHMI = @"SettingUpHMI";
 SDLLifecycleState *const SDLLifecycleStateUnregistering = @"Unregistering";
 SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
 
+NSString *const BackgroundTaskTransportName = @"com.sdl.transport.backgroundTask";
+
 #pragma mark - SDLManager Private Interface
 
 @interface SDLLifecycleManager () <SDLConnectionManagerType, SDLStreamingProtocolDelegate>
 
 // Readonly public properties
 @property (copy, nonatomic, readwrite) SDLConfiguration *configuration;
+@property (strong, nonatomic, readwrite, nullable) NSString *authToken;
 @property (strong, nonatomic, readwrite) SDLNotificationDispatcher *notificationDispatcher;
 @property (strong, nonatomic, readwrite) SDLResponseDispatcher *responseDispatcher;
 @property (strong, nonatomic, readwrite) SDLStateMachine *lifecycleStateMachine;
@@ -85,6 +90,8 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
 @property (strong, nonatomic, nullable) SDLSecondaryTransportManager *secondaryTransportManager;
 @property (copy, nonatomic) SDLManagerReadyBlock readyHandler;
 @property (copy, nonatomic) dispatch_queue_t lifecycleQueue;
+@property (assign, nonatomic) int32_t lastCorrelationId;
+@property (copy, nonatomic) SDLBackgroundTaskManager *backgroundTaskManager;
 
 @end
 
@@ -116,7 +123,7 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
     _lifecycleStateMachine = [[SDLStateMachine alloc] initWithTarget:self initialState:SDLLifecycleStateStopped states:[self.class sdl_stateTransitionDictionary]];
     _lastCorrelationId = 0;
     _notificationDispatcher = [[SDLNotificationDispatcher alloc] init];
-    _responseDispatcher = [[SDLResponseDispatcher alloc] init];
+    _responseDispatcher = [[SDLResponseDispatcher alloc] initWithNotificationDispatcher:_notificationDispatcher];
     _registerResponse = nil;
 
     _rpcOperationQueue = [[NSOperationQueue alloc] init];
@@ -135,7 +142,7 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
         [configuration.lifecycleConfig.appType isEqualToEnum:SDLAppHMITypeProjection] ||
         [configuration.lifecycleConfig.additionalAppTypes containsObject:SDLAppHMITypeNavigation] ||
         [configuration.lifecycleConfig.additionalAppTypes containsObject:SDLAppHMITypeProjection]) {
-        _streamManager = [[SDLStreamingMediaManager alloc] initWithConnectionManager:self configuration:configuration.streamingMediaConfig];
+        _streamManager = [[SDLStreamingMediaManager alloc] initWithConnectionManager:self configuration:configuration];
     } else {
         SDLLogV(@"Skipping StreamingMediaManager setup due to app type");
     }
@@ -145,6 +152,8 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(transportDidDisconnect) name:SDLTransportDidDisconnect object:_notificationDispatcher];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(hmiStatusDidChange:) name:SDLDidChangeHMIStatusNotification object:_notificationDispatcher];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(remoteHardwareDidUnregister:) name:SDLDidReceiveAppUnregisteredNotification object:_notificationDispatcher];
+
+    _backgroundTaskManager = [[SDLBackgroundTaskManager alloc] initWithBackgroundTaskName: BackgroundTaskTransportName];
 
     return self;
 }
@@ -194,7 +203,7 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
         SDLLifecycleStateStarted: @[SDLLifecycleStateConnected, SDLLifecycleStateStopped, SDLLifecycleStateReconnecting],
         SDLLifecycleStateReconnecting: @[SDLLifecycleStateStarted, SDLLifecycleStateStopped],
         SDLLifecycleStateConnected: @[SDLLifecycleStateStopped, SDLLifecycleStateReconnecting, SDLLifecycleStateRegistered],
-        SDLLifecycleStateRegistered: @[SDLLifecycleStateStopped, SDLLifecycleStateReconnecting, SDLLifecycleStateSettingUpManagers, SDLLifecycleStateUpdatingConfiguration],
+        SDLLifecycleStateRegistered: @[SDLLifecycleStateStopped, SDLLifecycleStateReconnecting, SDLLifecycleStateUnregistering, SDLLifecycleStateSettingUpManagers, SDLLifecycleStateUpdatingConfiguration],
         SDLLifecycleStateUpdatingConfiguration: @[SDLLifecycleStateStopped, SDLLifecycleStateReconnecting, SDLLifecycleStateSettingUpManagers],
         SDLLifecycleStateSettingUpManagers: @[SDLLifecycleStateStopped, SDLLifecycleStateReconnecting, SDLLifecycleStateSettingUpAppIcon],
         SDLLifecycleStateSettingUpAppIcon: @[SDLLifecycleStateStopped, SDLLifecycleStateReconnecting, SDLLifecycleStateSettingUpHMI],
@@ -205,9 +214,12 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
 }
 
 - (void)didEnterStateStarted {
-// Start up the internal proxy object
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    // Start a background task so a session can be established even when the app is backgrounded.
+    [self.backgroundTaskManager startBackgroundTask];
+
+    // Start up the internal proxy object
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     if (self.configuration.lifecycleConfig.tcpDebugMode) {
         // secondary transport manager is not used
         self.secondaryTransportManager = nil;
@@ -222,7 +234,7 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
         self.proxy = [SDLProxy iapProxyWithListener:self.notificationDispatcher
                           secondaryTransportManager:self.secondaryTransportManager];
     }
-#pragma clang diagnostic pop
+    #pragma clang diagnostic pop
 }
 
 - (void)didEnterStateStopped {
@@ -235,6 +247,8 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
 
 - (void)sdl_stopManager:(BOOL)shouldRestart {
     SDLLogV(@"Stopping manager, %@", (shouldRestart ? @"will restart" : @"will not restart"));
+
+    self.proxy = nil;
 
     [self.fileManager stop];
     [self.permissionManager stop];
@@ -256,7 +270,6 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
     self.hmiLevel = nil;
     self.audioStreamingState = nil;
     self.systemContext = nil;
-    self.proxy = nil;
 
     // Due to a race condition internally with EAStream, we cannot immediately attempt to restart the proxy, as we will randomly crash.
     // Apple Bug ID #30059457
@@ -269,15 +282,29 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
 
         if (shouldRestart) {
             [strongSelf sdl_transitionToState:SDLLifecycleStateStarted];
+        } else {
+            // End the background task because a session will not be established
+            [self.backgroundTaskManager endBackgroundTask];
         }
     });
 }
 
 - (void)didEnterStateConnected {
+    // Ignore the connection while we are reconnecting. The proxy needs to be disposed and restarted in order to ensure correct state. https://github.com/smartdevicelink/sdl_ios/issues/1172
+    if ([self.lifecycleState isEqualToString:SDLLifecycleStateReconnecting]) { return; }
+
     // If we have security managers, add them to the proxy
     if (self.configuration.streamingMediaConfig.securityManagers != nil) {
         SDLLogD(@"Adding security managers");
         [self.proxy addSecurityManagers:self.configuration.streamingMediaConfig.securityManagers forAppId:self.configuration.lifecycleConfig.appId];
+    }
+
+    // If the negotiated protocol version is greater than the minimum allowable version, we need to end service and disconnect
+    if ([self.configuration.lifecycleConfig.minimumProtocolVersion isGreaterThanVersion:[SDLGlobals sharedGlobals].protocolVersion]) {
+        SDLLogW(@"Disconnecting from head unit, protocol version %@ is greater than configured minimum version %@", [SDLGlobals sharedGlobals].protocolVersion.stringVersion, self.configuration.lifecycleConfig.minimumProtocolVersion.stringVersion);
+        [self.proxy.protocol endServiceWithType:SDLServiceTypeRPC];
+        [self sdl_transitionToState:SDLLifecycleStateStopped];
+        return;
     }
 
     // Build a register app interface request with the configuration data
@@ -294,7 +321,9 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
                 // If the success BOOL is NO or we received an error at this point, we failed. Call the ready handler and transition to the DISCONNECTED state.
                 if (error != nil || ![response.success boolValue]) {
                     SDLLogE(@"Failed to register the app. Error: %@, Response: %@", error, response);
-                    strongSelf.readyHandler(NO, error);
+                    if (strongSelf.readyHandler) {
+                        strongSelf.readyHandler(NO, error);
+                    }
 
                     if (strongSelf.lifecycleState != SDLLifecycleStateReconnecting) {
                         [strongSelf sdl_transitionToState:SDLLifecycleStateStopped];
@@ -304,13 +333,20 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
                 }
 
                 strongSelf.registerResponse = (SDLRegisterAppInterfaceResponse *)response;
-                [SDLGlobals sharedGlobals].rpcVersion = strongSelf.registerResponse.syncMsgVersion;
+                [SDLGlobals sharedGlobals].rpcVersion = [SDLVersion versionWithSyncMsgVersion:strongSelf.registerResponse.syncMsgVersion];
                 [strongSelf sdl_transitionToState:SDLLifecycleStateRegistered];
             });
         }];
 }
 
 - (void)didEnterStateRegistered {
+    // If the negotiated RPC version is greater than the minimum allowable version, we need to unregister and disconnect
+    if ([self.configuration.lifecycleConfig.minimumRPCVersion isGreaterThanVersion:[SDLGlobals sharedGlobals].rpcVersion]) {
+        SDLLogW(@"Disconnecting from head unit, RPC version %@ is greater than configured minimum version %@", [SDLGlobals sharedGlobals].rpcVersion.stringVersion, self.configuration.lifecycleConfig.minimumRPCVersion.stringVersion);
+        [self sdl_transitionToState:SDLLifecycleStateUnregistering];
+        return;
+    }
+
     NSArray<SDLLanguage> *supportedLanguages = self.configuration.lifecycleConfig.languagesSupported;
     SDLLanguage desiredLanguage = self.configuration.lifecycleConfig.language;
     SDLLanguage actualLanguage = self.registerResponse.language;
@@ -328,30 +364,30 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
     // we can expect that the delegate has implemented the update method and the actual language is a supported language
     SDLLanguage actualLanguage = self.registerResponse.language;
 
-    SDLLifecycleConfigurationUpdate *configUpdate = [self.delegate managerShouldUpdateLifecycleToLanguage:actualLanguage];
-    
-    if (configUpdate) {
-        self.configuration.lifecycleConfig.language = actualLanguage;
-        if (configUpdate.appName) {
-            self.configuration.lifecycleConfig.appName = configUpdate.appName;
-        }
-        if (configUpdate.shortAppName) {
-            self.configuration.lifecycleConfig.shortAppName = configUpdate.shortAppName;
-        }
-        if (configUpdate.ttsName) {
-            self.configuration.lifecycleConfig.ttsName = configUpdate.ttsName;
-        }
-        if (configUpdate.voiceRecognitionCommandNames) {
-            self.configuration.lifecycleConfig.voiceRecognitionCommandNames = configUpdate.voiceRecognitionCommandNames;
-        }
-        
-        SDLChangeRegistration *changeRegistration = [[SDLChangeRegistration alloc] initWithLanguage:actualLanguage hmiDisplayLanguage:actualLanguage];
-        changeRegistration.appName = configUpdate.appName;
-        changeRegistration.ngnMediaScreenAppName = configUpdate.shortAppName;
-        changeRegistration.ttsName = configUpdate.ttsName;
-        changeRegistration.vrSynonyms = configUpdate.voiceRecognitionCommandNames;
+        SDLLifecycleConfigurationUpdate *configUpdate = [self.delegate managerShouldUpdateLifecycleToLanguage:actualLanguage];
 
-        [self sendConnectionManagerRequest:changeRegistration withResponseHandler:nil];
+        if (configUpdate) {
+            self.configuration.lifecycleConfig.language = actualLanguage;
+            if (configUpdate.appName) {
+                self.configuration.lifecycleConfig.appName = configUpdate.appName;
+            }
+            if (configUpdate.shortAppName) {
+                self.configuration.lifecycleConfig.shortAppName = configUpdate.shortAppName;
+            }
+            if (configUpdate.ttsName) {
+                self.configuration.lifecycleConfig.ttsName = configUpdate.ttsName;
+            }
+            if (configUpdate.voiceRecognitionCommandNames) {
+                self.configuration.lifecycleConfig.voiceRecognitionCommandNames = configUpdate.voiceRecognitionCommandNames;
+            }
+
+            SDLChangeRegistration *changeRegistration = [[SDLChangeRegistration alloc] initWithLanguage:actualLanguage hmiDisplayLanguage:actualLanguage];
+            changeRegistration.appName = configUpdate.appName;
+            changeRegistration.ngnMediaScreenAppName = configUpdate.shortAppName;
+            changeRegistration.ttsName = configUpdate.ttsName;
+            changeRegistration.vrSynonyms = configUpdate.voiceRecognitionCommandNames;
+
+            [self sendConnectionManagerRequest:changeRegistration withResponseHandler:nil];
     }
     
     [self sdl_transitionToState:SDLLifecycleStateSettingUpManagers];
@@ -364,6 +400,7 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
     dispatch_group_enter(managerGroup);
     SDLLogD(@"Setting up assistant managers");
     [self.lockScreenManager start];
+    [self.systemCapabilityManager start];
 
     dispatch_group_enter(managerGroup);
     [self.fileManager startWithCompletionHandler:^(BOOL success, NSError *_Nullable error) {
@@ -465,6 +502,9 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
         	[self.delegate audioStreamingState:SDLAudioStreamingStateNotAudible didChangeToState:self.audioStreamingState];
     	}
     });
+
+    // Stop the background task now that setup has completed
+    [self.backgroundTaskManager endBackgroundTask];
 }
 
 - (void)didEnterStateUnregistering {
@@ -522,11 +562,23 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
 
 #pragma mark Sending Requests
 
-- (void)sendRequest:(SDLRPCRequest *)request {
-    [self sendRequest:request withResponseHandler:nil];
+- (void)sendRPC:(__kindof SDLRPCMessage *)rpc {
+    if ([rpc isKindOfClass:SDLRPCRequest.class]) {
+        SDLRPCRequest *requestRPC = (SDLRPCRequest *)rpc;
+        [self sendRequest:requestRPC withResponseHandler:nil];
+    } else if ([rpc isKindOfClass:SDLRPCResponse.class] || [rpc isKindOfClass:SDLRPCNotification.class]) {
+        [self sdl_sendRPC:rpc];
+    } else {
+        NSAssert(false, @"The request should be of type `Request`, `Response` or `Notification");
+    }
 }
 
-- (void)sendRequest:(__kindof SDLRPCRequest *)request withResponseHandler:(nullable SDLResponseHandler)handler {
+- (void)sdl_sendRPC:(__kindof SDLRPCMessage *)rpc {
+    SDLAsynchronousRPCOperation *op = [[SDLAsynchronousRPCOperation alloc] initWithConnectionManager:self rpc:rpc];
+    [self.rpcOperationQueue addOperation:op];
+}
+
+- (void)sendRequest:(SDLRPCRequest *)request withResponseHandler:(nullable SDLResponseHandler)handler {
     SDLAsynchronousRPCRequestOperation *op = [[SDLAsynchronousRPCRequestOperation alloc] initWithConnectionManager:self request:request responseHandler:handler];
     [self.rpcOperationQueue addOperation:op];
 }
@@ -551,9 +603,22 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
     [self.rpcOperationQueue addOperation:op];
 }
 
+- (void)sendConnectionRPC:(__kindof SDLRPCMessage *)rpc {
+    NSAssert(([rpc isKindOfClass:SDLRPCResponse.class] || [rpc isKindOfClass:SDLRPCNotification.class]), @"Only RPCs of type `Response` or `Notfication` can be sent using this method. To send RPCs of type `Request` use sendConnectionRequest:withResponseHandler:.");
+
+    if (![self.lifecycleStateMachine isCurrentState:SDLLifecycleStateReady]) {
+        SDLLogW(@"Manager not ready, message not sent (%@)", rpc);
+        return;
+    }
+
+    dispatch_async(_lifecycleQueue, ^{
+        [self sdl_sendRequest:rpc withResponseHandler:nil];
+    });
+}
+
 - (void)sendConnectionRequest:(__kindof SDLRPCRequest *)request withResponseHandler:(nullable SDLResponseHandler)handler {
     if (![self.lifecycleStateMachine isCurrentState:SDLLifecycleStateReady]) {
-        SDLLogW(@"Manager not ready, message not sent (%@)", request);
+        SDLLogW(@"Manager not ready, request not sent (%@)", request);
         if (handler) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 handler(request, nil, [NSError sdl_lifecycle_notReadyError]);
@@ -569,13 +634,13 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
 }
 
 // Managers need to avoid state checking. Part of <SDLConnectionManagerType>.
-- (void)sendConnectionManagerRequest:(__kindof SDLRPCRequest *)request withResponseHandler:(nullable SDLResponseHandler)handler {
+- (void)sendConnectionManagerRequest:(__kindof SDLRPCMessage *)request withResponseHandler:(nullable SDLResponseHandler)handler {
     dispatch_async(_lifecycleQueue, ^{
         [self sdl_sendRequest:request withResponseHandler:handler];
     });
 }
 
-- (void)sdl_sendRequest:(SDLRPCRequest *)request withResponseHandler:(nullable SDLResponseHandler)handler {
+- (void)sdl_sendRequest:(__kindof SDLRPCMessage *)request withResponseHandler:(nullable SDLResponseHandler)handler {
     // We will allow things to be sent in a "SDLLifecycleStateConnected" state in the private method, but block it in the public method sendRequest:withCompletionHandler: so that the lifecycle manager can complete its setup without being bothered by developer error
     NSParameterAssert(request != nil);
 
@@ -591,18 +656,24 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
         return;
     }
 
-    // Add a correlation ID to the request
-    NSNumber *corrID = [self sdl_getNextCorrelationId];
-    request.correlationID = corrID;
-
-    [self.responseDispatcher storeRequest:request handler:handler];
-    [self.proxy sendRPC:request];
+    if ([request isKindOfClass:SDLRPCRequest.class]) {
+        // Generate and add a correlation ID to the request. When a response for the request is returned from Core, it will have the same correlation ID
+        SDLRPCRequest *requestRPC = (SDLRPCRequest *)request;
+        NSNumber *corrID = [self sdl_getNextCorrelationId];
+        requestRPC.correlationID = corrID;
+        [self.responseDispatcher storeRequest:requestRPC handler:handler];
+        [self.proxy sendRPC:requestRPC];
+    } else if ([request isKindOfClass:SDLRPCResponse.class] || [request isKindOfClass:SDLRPCNotification.class]) {
+        [self.proxy sendRPC:request];
+    } else {
+        SDLLogE(@"Attempting to send an RPC with unknown type, %@. The request should be of type request, response or notification. Returning...", request.class);
+    }
 }
 
 
 #pragma mark Helper Methods
 - (NSNumber<SDLInt> *)sdl_getNextCorrelationId {
-    if (self.lastCorrelationId == UINT16_MAX) {
+    if (self.lastCorrelationId == INT32_MAX) {
         self.lastCorrelationId = 0;
     }
 
@@ -630,6 +701,14 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
     }
 }
 
+/**
+ *  Gets the authentication token returned by the `StartServiceACK` header
+ *
+ *  @return An authentication token
+ */
+- (nullable NSString *)authToken {
+    return self.proxy.protocol.authToken;
+}
 
 #pragma mark SDL notification observers
 
@@ -688,8 +767,17 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
     SDLSystemContext oldSystemContext = self.systemContext;
     self.systemContext = hmiStatusNotification.systemContext;
 
-    SDLLogD(@"HMI level changed from %@ to %@", oldHMILevel, self.hmiLevel);
-    SDLLogD(@"Audio streaming state changed from %@ to %@", oldStreamingState, self.audioStreamingState);
+    if (![oldHMILevel isEqualToEnum:self.hmiLevel]) {
+        SDLLogD(@"HMI level changed from %@ to %@", oldHMILevel, self.hmiLevel);
+    }
+
+    if (![oldStreamingState isEqualToEnum:self.audioStreamingState]) {
+        SDLLogD(@"Audio streaming state changed from %@ to %@", oldStreamingState, self.audioStreamingState);
+    }
+
+    if (![oldSystemContext isEqualToEnum:self.systemContext]) {
+        SDLLogD(@"System context changed from %@ to %@", oldSystemContext, self.systemContext);
+    }
 
     if ([self.lifecycleStateMachine isCurrentState:SDLLifecycleStateSettingUpHMI]) {
         [self sdl_transitionToState:SDLLifecycleStateReady];
@@ -737,7 +825,7 @@ SDLLifecycleState *const SDLLifecycleStateReady = @"Ready";
         [self sdl_transitionToState:SDLLifecycleStateStopped];
     } else if ([self.lifecycleStateMachine isCurrentState:SDLLifecycleStateStopped]) {
         return;
-    } else if ([appUnregisteredNotification.reason isKindOfClass:[NSString class]] && [appUnregisteredNotification.reason isEqualToEnum:SDLAppInterfaceUnregisteredReasonAppUnauthorized]) {
+    } else if (appUnregisteredNotification.reason != nil && ([appUnregisteredNotification.reason isEqualToEnum:SDLAppInterfaceUnregisteredReasonAppUnauthorized] || [appUnregisteredNotification.reason isEqualToString:SDLAppInterfaceUnregisteredReasonProtocolViolation])) {
         // HAX: The string check is due to a core "feature" that could cause -1 to be sent as the enum value, which will crash here.
         [self sdl_transitionToState:SDLLifecycleStateStopped];
     } else {

@@ -8,7 +8,7 @@
 #import <Quick/Quick.h>
 #import <Nimble/Nimble.h>
 
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
 #import "SDLMassageModeData.h"
 
 QuickSpecBegin(SDLMassageModeDataSpec)
@@ -32,10 +32,13 @@ describe(@"Getter/Setter Tests", ^ {
     });
 
     it(@"Should get correctly when initialized", ^ {
-        NSMutableDictionary* dict = [@{SDLNameMassageMode:SDLMassageModeLow,
-                                       SDLNameMassageZone:SDLMassageZoneLumbar
+        NSMutableDictionary* dict = [@{SDLRPCParameterNameMassageMode:SDLMassageModeLow,
+                                       SDLRPCParameterNameMassageZone:SDLMassageZoneLumbar
                                        } mutableCopy];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLMassageModeData* testStruct = [[SDLMassageModeData alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
 
         expect(testStruct.massageZone).to(equal(SDLMassageZoneLumbar));
         expect(testStruct.massageMode).to(equal(SDLMassageModeLow));

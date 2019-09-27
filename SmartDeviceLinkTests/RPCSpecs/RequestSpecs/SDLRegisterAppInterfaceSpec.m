@@ -14,7 +14,8 @@
 #import "SDLDeviceInfo.h"
 #import "SDLLanguage.h"
 #import "SDLLifecycleConfiguration.h"
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
+#import "SDLRPCFunctionNames.h"
 #import "SDLRegisterAppInterface.h"
 #import "SDLSyncMsgVersion.h"
 #import "SDLTemplateColorScheme.h"
@@ -42,7 +43,7 @@ describe(@"RegisterAppInterface Tests", ^{
     __block SDLAppInfo *appInfo = nil;
     __block SDLTemplateColorScheme *colorScheme = nil;
 
-    __block SDLSyncMsgVersion *currentSyncMsgVersion = [[SDLSyncMsgVersion alloc] initWithMajorVersion:5 minorVersion:0 patchVersion:0];
+    __block SDLSyncMsgVersion *currentSyncMsgVersion = [[SDLSyncMsgVersion alloc] initWithMajorVersion:5 minorVersion:1 patchVersion:0];
 
     beforeEach(^{
         testRegisterAppInterface = nil;
@@ -92,27 +93,30 @@ describe(@"RegisterAppInterface Tests", ^{
     });
 
     it(@"Should get correctly when initialized with a dictionary", ^ {
-        NSDictionary* dict = @{SDLNameRequest:
-                                           @{SDLNameParameters:
-                                                 @{SDLNameSyncMessageVersion:version,
-                                                   SDLNameAppName:appName,
-                                                   SDLNameTTSName:[@[chunk] mutableCopy],
-                                                   SDLNameNGNMediaScreenAppName:shortAppName,
-                                                   SDLNameVRSynonyms:@[vrSynonyms],
-                                                   SDLNameIsMediaApplication:isMediaApp,
-                                                   SDLNameLanguageDesired:SDLLanguageNoNo,
-                                                   SDLNameHMIDisplayLanguageDesired:SDLLanguagePtPt,
-                                                   SDLNameAppHMIType:appTypes,
-                                                   SDLNameHashId:resumeHash,
-                                                   SDLNameDeviceInfo:info,
-                                                   SDLNameFullAppID:fullAppId,
-                                                   SDLNameAppId:appId,
-                                                   SDLNameAppInfo:appInfo,
-                                                   SDLNameDayColorScheme: colorScheme,
-                                                   SDLNameNightColorScheme: colorScheme,
+        NSDictionary* dict = @{SDLRPCParameterNameRequest:
+                                           @{SDLRPCParameterNameParameters:
+                                                 @{SDLRPCParameterNameSyncMessageVersion:version,
+                                                   SDLRPCParameterNameAppName:appName,
+                                                   SDLRPCParameterNameTTSName:[@[chunk] mutableCopy],
+                                                   SDLRPCParameterNameNGNMediaScreenAppName:shortAppName,
+                                                   SDLRPCParameterNameVRSynonyms:@[vrSynonyms],
+                                                   SDLRPCParameterNameIsMediaApplication:isMediaApp,
+                                                   SDLRPCParameterNameLanguageDesired:SDLLanguageNoNo,
+                                                   SDLRPCParameterNameHMIDisplayLanguageDesired:SDLLanguagePtPt,
+                                                   SDLRPCParameterNameAppHMIType:appTypes,
+                                                   SDLRPCParameterNameHashId:resumeHash,
+                                                   SDLRPCParameterNameDeviceInfo:info,
+                                                   SDLRPCParameterNameFullAppID:fullAppId,
+                                                   SDLRPCParameterNameAppId:appId,
+                                                   SDLRPCParameterNameAppInfo:appInfo,
+                                                   SDLRPCParameterNameDayColorScheme: colorScheme,
+                                                   SDLRPCParameterNameNightColorScheme: colorScheme,
                                                    },
-                                             SDLNameOperationName:SDLNameRegisterAppInterface}};
+                                             SDLRPCParameterNameOperationName:SDLRPCFunctionNameRegisterAppInterface}};
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLRegisterAppInterface* testRegisterAppInterface = [[SDLRegisterAppInterface alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
 
         expect(testRegisterAppInterface.syncMsgVersion).to(equal(version));
         expect(testRegisterAppInterface.appName).to(match(appName));
@@ -210,7 +214,10 @@ describe(@"RegisterAppInterface Tests", ^{
         });
 
         it(@"initWithAppName:appId:languageDesired:isMediaApp:appTypes:shortAppName:", ^{
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
             SDLRegisterAppInterface *testRegisterAppInterface = [[SDLRegisterAppInterface alloc] initWithAppName:appName appId:appId languageDesired:language isMediaApp:isMediaApp appTypes:appTypes shortAppName:shortAppName];
+#pragma clang diagnostic pop
 
             expect(testRegisterAppInterface.fullAppID).to(beNil());
             expect(testRegisterAppInterface.appID).to(match(appId));

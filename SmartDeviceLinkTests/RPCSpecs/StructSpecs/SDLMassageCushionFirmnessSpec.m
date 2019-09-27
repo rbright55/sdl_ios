@@ -7,7 +7,7 @@
 #import <Quick/Quick.h>
 #import <Nimble/Nimble.h>
 
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
 #import "SDLMassageCushionFirmness.h"
 
 QuickSpecBegin(SDLMassageCushionFirmnessSpec)
@@ -31,10 +31,13 @@ describe(@"Getter/Setter Tests", ^ {
     });
 
     it(@"Should get correctly when initialized", ^ {
-        NSMutableDictionary* dict = [@{SDLNameCushion:SDLMassageCushionSeatBolsters,
-                                       SDLNameFirmness:@12
+        NSMutableDictionary* dict = [@{SDLRPCParameterNameCushion:SDLMassageCushionSeatBolsters,
+                                       SDLRPCParameterNameFirmness:@12
                                        } mutableCopy];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLMassageCushionFirmness* testStruct = [[SDLMassageCushionFirmness alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
 
         expect(testStruct.cushion).to(equal(SDLMassageCushionSeatBolsters));
         expect(testStruct.firmness).to(equal(@12));

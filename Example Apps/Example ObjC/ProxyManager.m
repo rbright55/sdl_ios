@@ -54,7 +54,7 @@ NS_ASSUME_NONNULL_BEGIN
     return self;
 }
 
-- (void)startManager {
+- (void)sdlex_startManager {
     __weak typeof (self) weakSelf = self;
     [self.sdlManager startWithReadyHandler:^(BOOL success, NSError * _Nullable error) {
         if (!success) {
@@ -75,13 +75,12 @@ NS_ASSUME_NONNULL_BEGIN
     }];
 }
 
-- (void)reset {
-    if (self.sdlManager == nil) {
-        [self sdlex_updateProxyState:ProxyStateStopped];
-        return;
-    }
+- (void)stopConnection {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.sdlManager stop];
+    });
 
-    [self.sdlManager stop];
+    [self sdlex_updateProxyState:ProxyStateStopped];
 }
 
 - (void)sdlex_updateProxyState:(ProxyState)newState {
@@ -97,9 +96,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)startWithProxyTransportType:(ProxyTransportType)proxyTransportType {
     [self sdlex_updateProxyState:ProxyStateSearchingForConnection];
 
-    // Check for previous instance of sdlManager
-    if (self.sdlManager) { return; }
-
     SDLLifecycleConfiguration *lifecycleConfig = proxyTransportType == ProxyTransportTypeIAP ? [self.class sdlex_iapLifecycleConfiguration] : [self.class sdlex_tcpLifecycleConfiguration];
     [self sdlex_setupConfigurationWithLifecycleConfiguration:lifecycleConfig];
 }
@@ -113,10 +109,14 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (void)sdlex_setupConfigurationWithLifecycleConfiguration:(SDLLifecycleConfiguration *)lifecycleConfiguration {
+    if (self.sdlManager != nil) {
+        // Manager already created, just start it again.
+        [self sdlex_startManager];
+        return;
+    }
     SDLConfiguration *config = [SDLConfiguration configurationWithLifecycle:lifecycleConfiguration lockScreen:[SDLLockScreenConfiguration enabledConfigurationWithAppIcon:[UIImage imageNamed:ExampleAppLogoName] backgroundColor:nil] logging:[self.class sdlex_logConfiguration] fileManager:[SDLFileManagerConfiguration defaultConfiguration]];
     self.sdlManager = [[SDLManager alloc] initWithConfiguration:config delegate:self];
-
-    [self startManager];
+    [self sdlex_startManager];
 }
 
 + (SDLLifecycleConfiguration *)sdlex_setLifecycleConfigurationPropertiesOnConfiguration:(SDLLifecycleConfiguration *)config {
@@ -129,7 +129,7 @@ NS_ASSUME_NONNULL_BEGIN
     config.ttsName = [SDLTTSChunk textChunksFromString:ExampleAppName];
     config.language = SDLLanguageEnUs;
     config.languagesSupported = @[SDLLanguageEnUs, SDLLanguageFrCa, SDLLanguageEsMx];
-    config.appType = SDLAppHMITypeMedia;
+    config.appType = SDLAppHMITypeDefault;
 
     SDLRGBColor *green = [[SDLRGBColor alloc] initWithRed:126 green:188 blue:121];
     SDLRGBColor *white = [[SDLRGBColor alloc] initWithRed:249 green:251 blue:254];
@@ -225,13 +225,11 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark - SDLManagerDelegate
 
 - (void)managerDidDisconnect {
-    [self sdlex_updateProxyState:ProxyStateStopped];
-    self.firstHMILevel = SDLHMILevelNone;
-
-    // If desired, automatically start searching for a new connection to Core
-    if (ExampleAppShouldRestartSDLManagerOnDisconnect) {
-        [self startManager];
+    if (self.state != ProxyStateStopped) {
+        [self sdlex_updateProxyState:ProxyStateSearchingForConnection];
     }
+
+    self.firstHMILevel = SDLHMILevelNone;
 }
 
 - (void)hmiLevel:(SDLHMILevel)oldLevel didChangeToLevel:(SDLHMILevel)newLevel {

@@ -16,7 +16,7 @@
 #import "SDLRadioControlCapabilities.h"
 #import "SDLSeatControlCapabilities.h"
 #import "SDLButtonCapabilities.h"
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
 
 QuickSpecBegin(SDLRemoteControlCapabilitiesSpec)
 
@@ -49,15 +49,18 @@ describe(@"Initialization tests", ^{
     
     it(@"should properly initialize initWithDictionary", ^{
         
-        NSMutableDictionary* dict = [@{SDLNameClimateControlCapabilities : [@[someClimateControlCapabilities] copy],
-                                       SDLNameRadioControlCapabilities :[@[someRadioControlCapabilities] copy],
-                                       SDLNameButtonCapabilities :[@[someButtonControlCapabilities] copy],
-                                       SDLNameSeatControlCapabilities:[@[someSeatControlCapabilities]copy],
-                                       SDLNameAudioControlCapabilities :[@[someAudioControlCapabilities] copy],
-                                       SDLNameLightControlCapabilities :[@[someLightControlCapabilities] copy],
-                                       SDLNameHmiSettingsControlCapabilities : [@[someHMISettingsControlCapabilities] copy]
+        NSMutableDictionary* dict = [@{SDLRPCParameterNameClimateControlCapabilities : [@[someClimateControlCapabilities] copy],
+                                       SDLRPCParameterNameRadioControlCapabilities :[@[someRadioControlCapabilities] copy],
+                                       SDLRPCParameterNameButtonCapabilities :[@[someButtonControlCapabilities] copy],
+                                       SDLRPCParameterNameSeatControlCapabilities:[@[someSeatControlCapabilities]copy],
+                                       SDLRPCParameterNameAudioControlCapabilities :[@[someAudioControlCapabilities] copy],
+                                       SDLRPCParameterNameLightControlCapabilities :[@[someLightControlCapabilities] copy],
+                                       SDLRPCParameterNameHmiSettingsControlCapabilities : [@[someHMISettingsControlCapabilities] copy]
                                        } mutableCopy];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLRemoteControlCapabilities* testStruct = [[SDLRemoteControlCapabilities alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
 
         expect(testStruct.seatControlCapabilities).to(equal([@[someSeatControlCapabilities] copy]));
         expect(testStruct.climateControlCapabilities).to(equal([@[someClimateControlCapabilities] copy]));

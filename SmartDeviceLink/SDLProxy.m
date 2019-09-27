@@ -2,7 +2,6 @@
 
 #import "SDLProxy.h"
 
-#import <ExternalAccessory/ExternalAccessory.h>
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 
@@ -40,6 +39,10 @@
 #import "SDLTransportType.h"
 #import "SDLUnsubscribeButton.h"
 #import "SDLVehicleType.h"
+#import "SDLVersion.h"
+
+#import "SDLRPCParameterNames.h"
+#import "SDLRPCFunctionNames.h"
 
 // Required imports for the scaling workaround
 #import "SDLDisplayCapabilities.h"
@@ -56,7 +59,7 @@ typedef NSString SDLVehicleMake;
 typedef void (^URLSessionTaskCompletionHandler)(NSData *data, NSURLResponse *response, NSError *error);
 typedef void (^URLSessionDownloadTaskCompletionHandler)(NSURL *location, NSURLResponse *response, NSError *error);
 
-NSString *const SDLProxyVersion = @"6.1.0_custom.4";
+NSString *const SDLProxyVersion = @"6.3.1_custom.1";
 const float StartSessionTime = 10.0;
 const float NotifyProxyClosedDelay = (float)0.1;
 const int PoliciesCorrelationId = 65535;
@@ -114,7 +117,6 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
         [self.transport connect];
 
         SDLLogV(@"Proxy transport initialization");
-        [[EAAccessoryManager sharedAccessoryManager] registerForLocalNotifications];
         
         NSURLSessionConfiguration* configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
         configuration.timeoutIntervalForRequest = DefaultConnectionTimeout;
@@ -155,8 +157,7 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
     }
     
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-    [[EAAccessoryManager sharedAccessoryManager] unregisterForLocalNotifications];
-    
+
     [_urlSession invalidateAndCancel];
     SDLLogV(@"Proxy dealloc");
 }
@@ -301,10 +302,10 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
 
 #pragma mark - Message sending
 - (void)sendRPC:(SDLRPCMessage *)message {
-    if ([message.getFunctionName isEqualToString:@"SubscribeButton"]) {
+    if ([message.name isEqualToString:SDLRPCFunctionNameSubscribeButton]) {
         BOOL handledRPC = [self sdl_adaptButtonSubscribeMessage:(SDLSubscribeButton *)message];
         if (handledRPC) { return; }
-    } else if ([message.getFunctionName isEqualToString:@"UnsubscribeButton"]) {
+    } else if ([message.name isEqualToString:SDLRPCFunctionNameUnsubscribeButton]) {
         BOOL handledRPC = [self sdl_adaptButtonUnsubscribeMessage:(SDLUnsubscribeButton *)message];
         if (handledRPC) { return; }
     }
@@ -319,7 +320,7 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 - (BOOL)sdl_adaptButtonSubscribeMessage:(SDLSubscribeButton *)message {
-    if ([SDLGlobals sharedGlobals].rpcVersion.majorVersion.intValue >= 5) {
+    if ([SDLGlobals sharedGlobals].rpcVersion.major >= 5) {
         if ([message.buttonName isEqualToEnum:SDLButtonNameOk]) {
             SDLSubscribeButton *playPauseMessage = [message copy];
             playPauseMessage.buttonName = SDLButtonNamePlayPause;
@@ -356,7 +357,7 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
 }
 
 - (BOOL)sdl_adaptButtonUnsubscribeMessage:(SDLUnsubscribeButton *)message {
-    if ([SDLGlobals sharedGlobals].rpcVersion.majorVersion.intValue >= 5) {
+    if ([SDLGlobals sharedGlobals].rpcVersion.major >= 5) {
         if ([message.buttonName isEqualToEnum:SDLButtonNameOk]) {
             SDLUnsubscribeButton *playPauseMessage = [message copy];
             playPauseMessage.buttonName = SDLButtonNamePlayPause;
@@ -402,13 +403,16 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
 }
 
 - (void)handleRPCDictionary:(NSDictionary<NSString *, id> *)dict {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     SDLRPCMessage *message = [[SDLRPCMessage alloc] initWithDictionary:[dict mutableCopy]];
-    NSString *functionName = [message getFunctionName];
-    NSString *messageType = [message messageType];
+#pragma clang diagnostic pop
+    NSString *functionName = message.name;
+    NSString *messageType = message.messageType;
 
     // If it's a response, append response
-    if ([messageType isEqualToString:SDLNameResponse]) {
-        BOOL notGenericResponseMessage = ![functionName isEqualToString:@"GenericResponse"];
+    if ([messageType isEqualToString:SDLRPCParameterNameResponse]) {
+        BOOL notGenericResponseMessage = ![functionName isEqualToString:SDLRPCFunctionNameGenericResponse];
         if (notGenericResponseMessage) {
             functionName = [NSString stringWithFormat:@"%@Response", functionName];
         }
@@ -418,11 +422,11 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
     NSString *functionClassName = [NSString stringWithFormat:@"SDL%@", functionName];
     SDLRPCMessage *newMessage = [[NSClassFromString(functionClassName) alloc] initWithDictionary:[dict mutableCopy]];
 
+    // Log the RPC message
+    SDLLogV(@"Message received: %@", newMessage);
+
     // Intercept and handle several messages ourselves
-    if ([functionName isEqualToString:SDLNameOnAppInterfaceUnregistered] || [functionName isEqualToString:SDLNameUnregisterAppInterface]) {
-        [self handleRPCUnregistered:dict];
-    }
-    
+
     if ([functionName isEqualToString:@"RegisterAppInterfaceResponse"]) {
         // WORKAROUND !!! !!!
         SDLRegisterAppInterfaceResponse *raiResponse = (SDLRegisterAppInterfaceResponse *)newMessage;
@@ -496,7 +500,7 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
 
     if ([functionName isEqualToString:@"OnButtonPress"]) {
         SDLOnButtonPress *message = (SDLOnButtonPress *)newMessage;
-        if ([SDLGlobals sharedGlobals].rpcVersion.majorVersion.intValue >= 5) {
+        if ([SDLGlobals sharedGlobals].rpcVersion.major >= 5) {
             BOOL handledRPC = [self sdl_handleOnButtonPressPostV5:message];
             if (handledRPC) { return; }
         } else { // RPC version of 4 or less (connected to an old head unit)
@@ -507,7 +511,7 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
 
     if ([functionName isEqualToString:@"OnButtonEvent"]) {
         SDLOnButtonEvent *message = (SDLOnButtonEvent *)newMessage;
-        if ([SDLGlobals sharedGlobals].rpcVersion.majorVersion.intValue >= 5) {
+        if ([SDLGlobals sharedGlobals].rpcVersion.major >= 5) {
             BOOL handledRPC = [self sdl_handleOnButtonEventPostV5:message];
             if (handledRPC) { return; }
         } else {
@@ -517,6 +521,11 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
     }
 
     [self sdl_invokeDelegateMethodsWithFunction:functionName message:newMessage];
+    
+    //Intercepting SDLRPCFunctionNameOnAppInterfaceUnregistered must happen after it is broadcasted as a notification above. This will prevent reconnection attempts in the lifecycle manager when the AppInterfaceUnregisteredReason should prevent reconnections.
+    if ([functionName isEqualToString:SDLRPCFunctionNameOnAppInterfaceUnregistered] || [functionName isEqualToString:SDLRPCFunctionNameUnregisterAppInterface]) {
+        [self handleRPCUnregistered:dict];
+    }
 
     // When an OnHMIStatus notification comes in, after passing it on (above), generate an "OnLockScreenNotification"
     if ([functionName isEqualToString:@"OnHMIStatus"]) {
@@ -552,7 +561,7 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
         self.protocol.securityManager.appId = self.appId;
     }
 
-    if ([SDLGlobals sharedGlobals].majorProtocolVersion >= 4) {
+    if ([SDLGlobals sharedGlobals].protocolVersion.major >= 4) {
         [self sendMobileHMIState];
         // Send SDL updates to application state
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(sendMobileHMIState) name:UIApplicationDidBecomeActiveNotification object:nil];
@@ -564,9 +573,9 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
     // If URL != nil, perform HTTP Post and don't pass the notification to proxy listeners
     SDLLogV(@"OnEncodedSyncPData: %@", message);
 
-    NSString *urlString = (NSString *)[message getParameters:@"URL"];
-    NSDictionary<NSString *, id> *encodedSyncPData = (NSDictionary<NSString *, id> *)[message getParameters:@"data"];
-    NSNumber *encodedSyncPTimeout = (NSNumber *)[message getParameters:@"Timeout"];
+    NSString *urlString = (NSString *)message.parameters[SDLRPCParameterNameURLUppercase];
+    NSDictionary<NSString *, id> *encodedSyncPData = (NSDictionary<NSString *, id> *)message.parameters[SDLRPCParameterNameData];
+    NSNumber *encodedSyncPTimeout = (NSNumber *)message.parameters[SDLRPCParameterNameTimeoutCapitalized];
 
     if (urlString && encodedSyncPData && encodedSyncPTimeout) {
         [self sendEncodedSyncPData:encodedSyncPData toURL:urlString withTimeout:encodedSyncPTimeout];
@@ -576,14 +585,19 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
 - (void)handleSystemRequest:(NSDictionary<NSString *, id> *)dict {
     SDLLogV(@"OnSystemRequest");
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     SDLOnSystemRequest *systemRequest = [[SDLOnSystemRequest alloc] initWithDictionary:[dict mutableCopy]];
     SDLRequestType requestType = systemRequest.requestType;
+#pragma clang diagnostic pop
 
     // Handle the various OnSystemRequest types
     if ([requestType isEqualToEnum:SDLRequestTypeProprietary]) {
         [self handleSystemRequestProprietary:systemRequest];
     } else if ([requestType isEqualToEnum:SDLRequestTypeLockScreenIconURL]) {
-        [self handleSystemRequestLockScreenIconURL:systemRequest];
+        [self sdl_handleSystemRequestLockScreenIconURL:systemRequest];
+    } else if ([requestType isEqualToEnum:SDLRequestTypeIconURL]) {
+        [self sdl_handleSystemRequestIconURL:systemRequest];
     } else if ([requestType isEqualToEnum:SDLRequestTypeHTTP]) {
         [self sdl_handleSystemRequestHTTP:systemRequest];
     } else if ([requestType isEqualToEnum:SDLRequestTypeLaunchApp]) {
@@ -681,7 +695,7 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
 
 #pragma mark Handle Post-Invoke of Delegate Methods
 - (void)handleAfterHMIStatus:(SDLRPCMessage *)message {
-    SDLHMILevel hmiLevel = (SDLHMILevel)[message getParameters:SDLNameHMILevel];
+    SDLHMILevel hmiLevel = (SDLHMILevel)message.parameters[SDLRPCParameterNameHMILevel];
     _lsm.hmiLevel = hmiLevel;
 
     SEL callbackSelector = NSSelectorFromString(@"onOnLockScreenNotification:");
@@ -689,7 +703,7 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
 }
 
 - (void)handleAfterDriverDistraction:(SDLRPCMessage *)message {
-    NSString *stateString = (NSString *)[message getParameters:SDLNameState];
+    NSString *stateString = (NSString *)message.parameters[SDLRPCParameterNameState];
     BOOL state = [stateString isEqualToString:@"DD_ON"] ? YES : NO;
     _lsm.driverDistracted = state;
 
@@ -770,7 +784,7 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
                     }];
 }
 
-- (void)handleSystemRequestLockScreenIconURL:(SDLOnSystemRequest *)request {
+- (void)sdl_handleSystemRequestLockScreenIconURL:(SDLOnSystemRequest *)request {
 	__weak typeof(self) weakSelf = self;
     [self sdl_sendDataTaskWithURL:[NSURL URLWithString:request.url]
                 completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
@@ -782,6 +796,26 @@ static CGFloat _defaultHiResScaleFactor = 0.75;
                     
                     UIImage *icon = [UIImage imageWithData:data];
                     [strongSelf invokeMethodOnDelegates:@selector(onReceivedLockScreenIcon:) withObject:icon];
+                }];
+}
+
+- (void)sdl_handleSystemRequestIconURL:(SDLOnSystemRequest *)request {
+    __weak typeof(self) weakSelf = self;
+    [self sdl_sendDataTaskWithURL:[NSURL URLWithString:request.url]
+                completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+                    __strong typeof(weakSelf) strongSelf = weakSelf;
+                    if (error != nil) {
+                        SDLLogW(@"OnSystemRequest (icon url) HTTP download task failed: %@", error.localizedDescription);
+                        return;
+                    } else if (data.length == 0) {
+                        SDLLogW(@"OnSystemRequest (icon url) HTTP download task failed to get the cloud app icon image data");
+                        return;
+                    }
+
+                    SDLSystemRequest *iconURLSystemRequest = [[SDLSystemRequest alloc] initWithType:SDLRequestTypeIconURL fileName:request.url];
+                    iconURLSystemRequest.bulkData = data;
+
+                    [strongSelf sendRPC:iconURLSystemRequest];
                 }];
 }
 

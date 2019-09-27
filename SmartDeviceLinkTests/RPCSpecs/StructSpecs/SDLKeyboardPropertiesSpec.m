@@ -12,7 +12,7 @@
 #import "SDLKeypressMode.h"
 #import "SDLKeyboardProperties.h"
 #import "SDLLanguage.h"
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
 
 
 QuickSpecBegin(SDLKeyboardPropertiesSpec)
@@ -35,12 +35,15 @@ describe(@"Getter/Setter Tests", ^ {
     });
     
     it(@"Should get correctly when initialized", ^ {
-        NSMutableDictionary* dict = [@{SDLNameLanguage:SDLLanguageDaDk,
-                                       SDLNameKeyboardLayout:SDLKeyboardLayoutQWERTZ,
-                                       SDLNameKeypressMode:SDLKeypressModeResendCurrentEntry,
-                                       SDLNameLimitedCharacterList:[@[@"s", @"r", @"f", @"q"] mutableCopy],
-                                       SDLNameAutoCompleteText:@"Auto Carrot"} mutableCopy];
+        NSMutableDictionary* dict = [@{SDLRPCParameterNameLanguage:SDLLanguageDaDk,
+                                       SDLRPCParameterNameKeyboardLayout:SDLKeyboardLayoutQWERTZ,
+                                       SDLRPCParameterNameKeypressMode:SDLKeypressModeResendCurrentEntry,
+                                       SDLRPCParameterNameLimitedCharacterList:[@[@"s", @"r", @"f", @"q"] mutableCopy],
+                                       SDLRPCParameterNameAutoCompleteText:@"Auto Carrot"} mutableCopy];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLKeyboardProperties* testStruct = [[SDLKeyboardProperties alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
         
         expect(testStruct.language).to(equal(SDLLanguageDaDk));
         expect(testStruct.keyboardLayout).to(equal(SDLKeyboardLayoutQWERTZ));

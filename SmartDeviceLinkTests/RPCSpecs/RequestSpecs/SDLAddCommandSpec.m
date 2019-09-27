@@ -11,7 +11,8 @@
 #import "SDLAddCommand.h"
 #import "SDLImage.h"
 #import "SDLMenuParams.h"
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
+#import "SDLRPCFunctionNames.h"
 
 QuickSpecBegin(SDLAddCommandSpec)
 
@@ -34,16 +35,18 @@ describe(@"Getter/Setter Tests", ^ {
     });
     
     it(@"Should get correctly when initialized", ^ {
-        NSMutableDictionary<NSString *, id> *dict = [@{SDLNameRequest:
-                                                          @{SDLNameParameters:
-                                                                @{SDLNameCommandId:@434577,
-                                                                  SDLNameMenuParams:menu,
-                                                                  SDLNameVRCommands:[@[@"name", @"anotherName"] mutableCopy],
-                                                                  SDLNameCommandIcon:image},
-                                                            SDLNameOperationName:SDLNameAddCommand}} mutableCopy];
-
+        NSMutableDictionary<NSString *, id> *dict = [@{SDLRPCParameterNameRequest:
+                                                          @{SDLRPCParameterNameParameters:
+                                                                @{SDLRPCParameterNameCommandId:@434577,
+                                                                  SDLRPCParameterNameMenuParams:menu,
+                                                                  SDLRPCParameterNameVRCommands:[@[@"name", @"anotherName"] mutableCopy],
+                                                                  SDLRPCParameterNameCommandIcon:image},
+                                                            SDLRPCParameterNameOperationName:SDLRPCFunctionNameAddCommand}} mutableCopy];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLAddCommand* testRequest = [[SDLAddCommand alloc] initWithDictionary:dict];
-        
+#pragma clang diagnostic pop
+
         expect(testRequest.cmdID).to(equal(@434577));
         expect(testRequest.menuParams).to(equal(menu));
         expect(testRequest.vrCommands).to(equal([@[@"name", @"anotherName"] mutableCopy]));

@@ -9,7 +9,7 @@
 #import <Nimble/Nimble.h>
 
 #import "SDLRadioControlCapabilities.h"
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
 
 QuickSpecBegin(SDLRadioControlCapabilitiesSpec)
 
@@ -36,21 +36,24 @@ describe(@"Initialization tests", ^{
     
     it(@"should properly initialize initWithDictionary", ^{
         
-        NSMutableDictionary* dict = [@{SDLNameModuleName : @"someName",
-                                       SDLNameRadioEnableAvailable : @YES,
-                                       SDLNameRadioBandAvailable : @YES,
-                                       SDLNameRadioFrequencyAvailable : @YES,
-                                       SDLNameHDChannelAvailable : @NO,
-                                       SDLNameRDSDataAvailable : @NO,
-                                       SDLNameAvailableHDsAvailable : @NO,
-                                       SDLNameStateAvailable : @YES,
-                                       SDLNameSignalStrengthAvailable : @YES,
-                                       SDLNameSignalChangeThresholdAvailable : @NO,
-                                       SDLNameHDRadioEnableAvailable : @YES,
-                                       SDLNameSiriusXMRadioAvailable : @NO,
-                                       SDLNameSISDataAvailable:@YES
+        NSMutableDictionary* dict = [@{SDLRPCParameterNameModuleName : @"someName",
+                                       SDLRPCParameterNameRadioEnableAvailable : @YES,
+                                       SDLRPCParameterNameRadioBandAvailable : @YES,
+                                       SDLRPCParameterNameRadioFrequencyAvailable : @YES,
+                                       SDLRPCParameterNameHDChannelAvailable : @NO,
+                                       SDLRPCParameterNameRDSDataAvailable : @NO,
+                                       SDLRPCParameterNameAvailableHDsAvailable : @NO,
+                                       SDLRPCParameterNameStateAvailable : @YES,
+                                       SDLRPCParameterNameSignalStrengthAvailable : @YES,
+                                       SDLRPCParameterNameSignalChangeThresholdAvailable : @NO,
+                                       SDLRPCParameterNameHDRadioEnableAvailable : @YES,
+                                       SDLRPCParameterNameSiriusXMRadioAvailable : @NO,
+                                       SDLRPCParameterNameSISDataAvailable:@YES
                                        } mutableCopy];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLRadioControlCapabilities* testStruct = [[SDLRadioControlCapabilities alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
         
         expect(testStruct.moduleName).to(equal(@"someName"));
         expect(testStruct.radioEnableAvailable).to(equal(@YES));

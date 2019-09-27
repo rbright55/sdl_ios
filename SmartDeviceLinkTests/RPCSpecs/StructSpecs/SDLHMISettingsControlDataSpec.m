@@ -7,7 +7,7 @@
 #import <Nimble/Nimble.h>
 
 #import "SDLHMISettingsControlData.h"
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
 
 
 QuickSpecBegin(SDLHMISettingsControlDataSpec)
@@ -34,10 +34,13 @@ describe(@"Getter/Setter Tests", ^ {
         });
 
         it(@"Should get correctly when initialized", ^ {
-            NSMutableDictionary* dict = [@{SDLNameDisplayMode:SDLDisplayModeAuto,
-                                           SDLNameTemperatureUnit:SDLTemperatureUnitCelsius,
-                                           SDLNameDistanceUnit:SDLDistanceUnitKilometers} mutableCopy];
+            NSMutableDictionary* dict = [@{SDLRPCParameterNameDisplayMode:SDLDisplayModeAuto,
+                                           SDLRPCParameterNameTemperatureUnit:SDLTemperatureUnitCelsius,
+                                           SDLRPCParameterNameDistanceUnit:SDLDistanceUnitKilometers} mutableCopy];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
             SDLHMISettingsControlData* testStruct = [[SDLHMISettingsControlData alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
 
             expect(testStruct.displayMode).to(equal(SDLDisplayModeAuto));
             expect(testStruct.temperatureUnit).to(equal(SDLTemperatureUnitCelsius));

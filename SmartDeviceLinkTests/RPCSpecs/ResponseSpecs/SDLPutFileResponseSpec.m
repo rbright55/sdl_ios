@@ -9,7 +9,8 @@
 #import <Nimble/Nimble.h>
 
 #import "SDLPutFileResponse.h"
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
+#import "SDLRPCFunctionNames.h"
 
 QuickSpecBegin(SDLPutFileResponseSpec)
 
@@ -23,12 +24,15 @@ describe(@"Getter/Setter Tests", ^ {
     });
     
     it(@"Should get correctly when initialized", ^ {
-        NSDictionary<NSString *, id> *dict = @{SDLNameResponse:
-                                                           @{SDLNameParameters:
-                                                                 @{SDLNameSpaceAvailable:@1248,
+        NSDictionary<NSString *, id> *dict = @{SDLRPCParameterNameResponse:
+                                                           @{SDLRPCParameterNameParameters:
+                                                                 @{SDLRPCParameterNameSpaceAvailable:@1248,
                                                                    },
-                                                             SDLNameOperationName:SDLNamePutFile}};
+                                                             SDLRPCParameterNameOperationName:SDLRPCFunctionNamePutFile}};
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLPutFileResponse* testResponse = [[SDLPutFileResponse alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
         
         expect(testResponse.spaceAvailable).to(equal(@1248));
     });

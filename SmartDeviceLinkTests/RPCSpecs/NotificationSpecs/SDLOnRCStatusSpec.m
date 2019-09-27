@@ -8,7 +8,8 @@
 
 #import "SDLOnRCStatus.h"
 #import "SDLModuleData.h"
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
+#import "SDLRPCFunctionNames.h"
 
 QuickSpecBegin(SDLOnRCStatusSpec)
 SDLModuleData * allocatedModule = [[SDLModuleData alloc] init];
@@ -28,14 +29,17 @@ describe(@"Getter/Setter Tests", ^ {
     });
 
     it(@"Should get correctly when initialized", ^ {
-        NSMutableDictionary<NSString *, id> *dict = [@{SDLNameNotification:
-                                                           @{SDLNameParameters:
-                                                                 @{SDLNameAllocatedModules:[@[allocatedModule] copy],
-                                                                   SDLNameFreeModules:[@[freeModule] copy],
-                                                                   SDLNameAllowed:@YES
+        NSMutableDictionary<NSString *, id> *dict = [@{SDLRPCParameterNameNotification:
+                                                           @{SDLRPCParameterNameParameters:
+                                                                 @{SDLRPCParameterNameAllocatedModules:[@[allocatedModule] copy],
+                                                                   SDLRPCParameterNameFreeModules:[@[freeModule] copy],
+                                                                   SDLRPCParameterNameAllowed:@YES
                                                                    },
-                                                             SDLNameOperationName:SDLNameOnRCStatus}} mutableCopy];
+                                                             SDLRPCParameterNameOperationName:SDLRPCFunctionNameOnRCStatus}} mutableCopy];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLOnRCStatus* testNotification = [[SDLOnRCStatus alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
 
         expect(testNotification.allowed).to(equal(@YES));
         expect(testNotification.allocatedModules).to(equal([@[allocatedModule] copy]));

@@ -16,7 +16,7 @@
 #import "SDLAudioControlData.h"
 #import "SDLLightControlData.h"
 #import "SDLHMISettingsControlData.h"
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
 
 QuickSpecBegin(SDLModuleDataSpec)
 
@@ -43,14 +43,17 @@ describe(@"Initialization tests", ^{
     
     it(@"should properly initialize initWithDictionary", ^{
         
-        NSMutableDictionary* dict = [@{SDLNameModuleType:SDLModuleTypeRadio,
-                                       SDLNameRadioControlData:someRadioData,
-                                       SDLNameClimateControlData:someClimateData,
-                                       SDLNameSeatControlData:someSeatData,
-                                       SDLNameAudioControlData:someAudioData,
-                                       SDLNameLightControlData:someLightData,
-                                       SDLNameHmiSettingsControlData:someHMISettingsData} mutableCopy];
+        NSMutableDictionary* dict = [@{SDLRPCParameterNameModuleType:SDLModuleTypeRadio,
+                                       SDLRPCParameterNameRadioControlData:someRadioData,
+                                       SDLRPCParameterNameClimateControlData:someClimateData,
+                                       SDLRPCParameterNameSeatControlData:someSeatData,
+                                       SDLRPCParameterNameAudioControlData:someAudioData,
+                                       SDLRPCParameterNameLightControlData:someLightData,
+                                       SDLRPCParameterNameHmiSettingsControlData:someHMISettingsData} mutableCopy];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLModuleData* testStruct = [[SDLModuleData alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
         
         expect(testStruct.moduleType).to(equal(SDLModuleTypeRadio));
         expect(testStruct.radioControlData).to(equal(someRadioData));

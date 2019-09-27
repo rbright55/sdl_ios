@@ -8,7 +8,7 @@
 #import <Quick/Quick.h>
 #import <Nimble/Nimble.h>
 
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
 #import "SDLSpeechCapabilities.h"
 #import "SDLTTSChunk.h"
 
@@ -30,9 +30,12 @@ describe(@"TTS Chunk Tests", ^{
         });
 
         it(@"should correctly initialize with initWithDictionary", ^{
-            NSDictionary* dict = @{SDLNameText: testText,
-                                   SDLNameType: testCapabilities};
+            NSDictionary* dict = @{SDLRPCParameterNameText: testText,
+                                   SDLRPCParameterNameType: testCapabilities};
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
             testStruct = [[SDLTTSChunk alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
 
             expect(testStruct.text).to(equal(testText));
             expect(testStruct.type).to(equal(testCapabilities));

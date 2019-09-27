@@ -11,7 +11,8 @@
 #import "SDLAudioStreamingState.h"
 #import "SDLHMILevel.h"
 #import "SDLOnHMIStatus.h"
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
+#import "SDLRPCFunctionNames.h"
 #import "SDLSystemContext.h"
 
 
@@ -33,14 +34,17 @@ describe(@"Getter/Setter Tests", ^ {
     });
     
     it(@"Should get correctly when initialized", ^ {
-        NSMutableDictionary* dict = [@{SDLNameNotification:
-                                           @{SDLNameParameters:
-                                                 @{SDLNameHMILevel: SDLHMILevelLimited,
-                                                   SDLNameAudioStreamingState: SDLAudioStreamingStateAttenuated,
-                                                   SDLNameSystemContext: SDLSystemContextHMIObscured,
-                                                   SDLNameVideoStreamingState: SDLVideoStreamingStateStreamable},
-                                             SDLNameOperationName:SDLNameOnHMIStatus}} mutableCopy];
+        NSMutableDictionary* dict = [@{SDLRPCParameterNameNotification:
+                                           @{SDLRPCParameterNameParameters:
+                                                 @{SDLRPCParameterNameHMILevel: SDLHMILevelLimited,
+                                                   SDLRPCParameterNameAudioStreamingState: SDLAudioStreamingStateAttenuated,
+                                                   SDLRPCParameterNameSystemContext: SDLSystemContextHMIObscured,
+                                                   SDLRPCParameterNameVideoStreamingState: SDLVideoStreamingStateStreamable},
+                                             SDLRPCParameterNameOperationName:SDLRPCFunctionNameOnHMIStatus}} mutableCopy];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         SDLOnHMIStatus* testNotification = [[SDLOnHMIStatus alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
         
         expect(testNotification.hmiLevel).to(equal(SDLHMILevelLimited));
         expect(testNotification.audioStreamingState).to(equal(SDLAudioStreamingStateAttenuated));

@@ -22,7 +22,6 @@
 #import "SDLError.h"
 #import "SDLFileManager.h"
 #import "SDLHMILevel.h"
-#import "SDLImage.h"
 #import "SDLKeyboardProperties.h"
 #import "SDLLogMacros.h"
 #import "SDLOnHMIStatus.h"
@@ -184,7 +183,13 @@ UInt16 const ChoiceCellIdMin = 1;
 #pragma mark Upload / Delete
 
 - (void)preloadChoices:(NSArray<SDLChoiceCell *> *)choices withCompletionHandler:(nullable SDLPreloadChoiceCompletionHandler)handler {
-    if (![self.currentState isEqualToString:SDLChoiceManagerStateReady]) { return; }
+    if ([self.currentState isEqualToString:SDLChoiceManagerStateShutdown]) {
+        if (handler != nil) {
+            NSError *error = [NSError sdl_choiceSetManager_incorrectState:self.currentState];
+            handler(error);
+        }
+        return;
+    }
 
     NSMutableSet<SDLChoiceCell *> *choicesToUpload = [[self sdl_choicesToBeUploadedWithArray:choices] mutableCopy];
     [choicesToUpload minusSet:self.preloadedMutableChoices];
@@ -280,7 +285,12 @@ UInt16 const ChoiceCellIdMin = 1;
     }
 
     self.pendingPresentationSet = choiceSet;
-    [self preloadChoices:self.pendingPresentationSet.choices withCompletionHandler:nil];
+    [self preloadChoices:self.pendingPresentationSet.choices withCompletionHandler:^(NSError * _Nullable error) {
+        if (error != nil) {
+            [choiceSet.delegate choiceSet:choiceSet didReceiveError:error];
+            return;
+        }
+    }];
 
     [self sdl_findIdsOnChoiceSet:self.pendingPresentationSet];
 
@@ -368,7 +378,7 @@ UInt16 const ChoiceCellIdMin = 1;
     }
 }
 
-#pragma mark - Setters
+#pragma mark - Keyboard Configuration
 
 - (void)setKeyboardConfiguration:(nullable SDLKeyboardProperties *)keyboardConfiguration {
     if (keyboardConfiguration == nil) {

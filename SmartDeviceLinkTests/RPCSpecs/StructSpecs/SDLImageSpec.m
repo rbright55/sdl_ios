@@ -10,7 +10,7 @@
 
 #import "SDLImage.h"
 #import "SDLImageType.h"
-#import "SDLNames.h"
+#import "SDLRPCParameterNames.h"
 
 
 QuickSpecBegin(SDLImageSpec)
@@ -47,11 +47,14 @@ describe(@"Getter/Setter Tests", ^{
             NSString *value = @"value";
             SDLImageType imageType = SDLImageTypeStatic;
 
-            NSDictionary* dict = [@{SDLNameValue:value,
-                                           SDLNameImageType:imageType,
-                                           SDLNameImageTemplate:@YES
+            NSDictionary* dict = [@{SDLRPCParameterNameValue:value,
+                                           SDLRPCParameterNameImageType:imageType,
+                                           SDLRPCParameterNameImageTemplate:@YES
                                            } mutableCopy];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
             testSDLImage = [[SDLImage alloc] initWithDictionary:dict];
+#pragma clang diagnostic pop
 
             expectedValue = value;
             expectedImageType = imageType;
