@@ -10,6 +10,7 @@
 
 #import "SDLTouchType.h"
 
+@protocol SDLConnectionManagerType;
 @protocol SDLFocusableItemHitTester;
 @protocol SDLTouchManagerDelegate;
 
@@ -94,7 +95,7 @@ typedef void(^SDLTouchEventHandler)(SDLTouch *touch, SDLTouchType type);
  @param hitTester The hit tester to be used to correlate a point with a view
  @return The initialized touch manager
  */
-- (instancetype)initWithHitTester:(nullable id<SDLFocusableItemHitTester>)hitTester;
+- (instancetype)initWithConnectionManager:(nullable id<SDLConnectionManagerType>)connectionManager hitTester:(nullable id<SDLFocusableItemHitTester>)hitTester;
 
 /**
  Called by SDLStreamingMediaManager in sync with the streaming framerate. This helps to moderate panning gestures by allowing the UI to be modified in time with the framerate.

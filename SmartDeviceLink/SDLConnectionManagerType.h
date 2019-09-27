@@ -9,6 +9,7 @@
 #import "SDLNotificationConstants.h"
 #import <Foundation/Foundation.h>
 
+@class SDLNotificationDispatcher;
 @class SDLRPCRequest;
 @class SDLRPCMessage;
 @class SDLRegisterAppInterfaceResponse;
@@ -60,6 +61,11 @@ NS_ASSUME_NONNULL_BEGIN
  *  @param completionHandler    The completion handler is called when all requests have a response from Core.
  */
 - (void)sendSequentialRequests:(NSArray<SDLRPCRequest *> *)requests progressHandler:(nullable SDLMultipleSequentialRequestProgressHandler)progressHandler completionHandler:(nullable SDLMultipleRequestCompletionHandler)completionHandler;
+
+/**
+ Returns the notification dispatcher of the connection manager. This dispatcher broadcasts all RPC requests, responses and notifications.
+ */
+- (SDLNotificationDispatcher *)notificationDispatcher;
 
 @end
 

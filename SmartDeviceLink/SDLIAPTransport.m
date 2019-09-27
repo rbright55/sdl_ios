@@ -391,7 +391,7 @@ int const CreateSessionRetries = 3;
  */
 - (double)sdl_retryDelay {
     const double MinRetrySeconds = 1.5;
-    const double MaxRetrySeconds = 9.5;
+    const double MaxRetrySeconds = 2.5;
     double RetryRangeSeconds = MaxRetrySeconds - MinRetrySeconds;
 
     static double appDelaySeconds = 0;

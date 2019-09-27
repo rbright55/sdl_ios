@@ -11,6 +11,7 @@
 #import "CGPoint_Util.h"
 #import "dispatch_timer.h"
 
+#import "SDLConnectionManagerType.h"
 #import "SDLFocusableItemHitTester.h"
 #import "SDLLogMacros.h"
 #import "SDLNotificationConstants.h"
@@ -102,7 +103,7 @@ static NSUInteger const MaximumNumberOfTouches = 2;
 
 @implementation SDLTouchManager
 
-- (instancetype)initWithHitTester:(nullable id<SDLFocusableItemHitTester>)hitTester {
+- (instancetype)initWithConnectionManager:(nullable id<SDLConnectionManagerType>)connectionManager hitTester:(nullable id<SDLFocusableItemHitTester>)hitTester {
     self = [super init];
     if (!self) {
         return nil;
@@ -116,7 +117,7 @@ static NSUInteger const MaximumNumberOfTouches = 2;
     _touchEnabled = YES;
     _enableSyncedPanning = YES;
 
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(sdl_onTouchEvent:) name:SDLDidReceiveTouchEventNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(sdl_onTouchEvent:) name:SDLDidReceiveTouchEventNotification object:connectionManager.notificationDispatcher];
 
     return self;
 }

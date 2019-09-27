@@ -194,6 +194,10 @@ NSString *const BackgroundTaskTransportName = @"com.sdl.transport.backgroundTask
     return self.lifecycleStateMachine.currentState;
 }
 
+- (SDLNotificationDispatcher *)notificationDispatcher {
+    return self.notificationDispatcher;
+}
+
 
 #pragma mark State Machine
 
