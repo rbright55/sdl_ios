@@ -195,7 +195,7 @@ NSString *const BackgroundTaskTransportName = @"com.sdl.transport.backgroundTask
 }
 
 - (SDLNotificationDispatcher *)notificationDispatcher {
-    return self.notificationDispatcher;
+    return _notificationDispatcher;
 }
 
 
