@@ -4,12 +4,21 @@
 //
 
 #import "SDLAudioIOManager.h"
-
-#import <SmartDeviceLink/SmartDeviceLink.h>
 #import "SDLAudioIOManagerDelegate.h"
-#import "SDLAudioStreamManager.h"
-#import "SDLAudioStreamManagerDelegate.h"
+
 #import "SDLAsynchronousRPCRequestOperation.h"
+#import "SDLAudioFile.h"
+#import "SDLAudioPassThruCapabilities.h"
+#import "SDLEndAudioPassThru.h"
+#import "SDLLogMacros.h"
+#import "SDLManager.h"
+#import "SDLPerformAudioPassThru.h"
+#import "SDLPerformAudioPassThruResponse.h"
+#import "SDLPCMAudioConverter.h"
+#import "SDLRegisterAppInterfaceResponse.h"
+#import "SDLRPCNotification.h"
+#import "SDLRPCResponseNotification.h"
+#import "SDLStreamingMediaManager.h"
 
 /** Amplifier const settings */
 #define INPUT_STREAM_AMPLIFIER_FACTOR_MAX (50.0)
@@ -32,17 +41,19 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     SDLAudioIOManagerStatePaused = 5, // only for inputstream while output stream is playing
 };
 
-@interface SDLAudioIOManager () <SDLAudioStreamManagerDelegate>
+@interface SDLAudioIOManager ()
 
 @property (assign, nonatomic) SDLAudioIOManagerState outputStreamState;
-@property (assign, nonatomic) SDLAudioIOManagerState inputStreamState;
+@property (strong, nonatomic, nonnull) NSDate *outputStreamPlaybackEnd;
 
+@property (assign, nonatomic) SDLAudioIOManagerState inputStreamState;
 @property (strong, nonatomic, nullable) SDLAudioPassThruCapabilities *inputStreamOptions;
 @property (strong, nonatomic, nullable) SDLAsynchronousRPCRequestOperation *inputStreamOperation;
 @property (assign, nonatomic) double inputStreamAmplifierFactor;
 @property (assign, nonatomic) NSUInteger inputStreamRetryCounter;
 
 @property (strong, nonatomic) dispatch_queue_t dispatchQueue;
+@property (strong, nonatomic) NSOperationQueue *operationQueue;
 
 @end
 
@@ -53,19 +64,20 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     if (!self) { return nil; }
 
     self.delegate = delegate;
-    
     self.sdlManager = sdlManager;
-    self.sdlManager.streamManager.audioManager.delegate = self;
 
     self.outputStreamState = SDLAudioIOManagerStateStopped;
-    self.inputStreamState = SDLAudioIOManagerStateStopped;
+    self.outputStreamPlaybackEnd = [NSDate dateWithTimeIntervalSince1970:0];
     
+    self.inputStreamState = SDLAudioIOManagerStateStopped;
     self.inputStreamOptions = nil;
     self.inputStreamAmplifierFactor = 0;
-    
     self.inputStreamRetryCounter = 0;
     
     self.dispatchQueue = dispatch_queue_create("com.sdl.manager.ioaudio.queue", nil);
+    self.operationQueue = [[NSOperationQueue alloc] init];
+    self.operationQueue.maxConcurrentOperationCount = 1;
+    self.operationQueue.suspended = YES;
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onTransportDisconnect) name:SDLTransportDidDisconnect object:nil];
 
@@ -108,7 +120,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 }
 
 - (void)onTransportDisconnect {
-    [self.sdlManager.streamManager.audioManager.queue cancelAllOperations];
+    [self.operationQueue cancelAllOperations];
     
     self.inputStreamOptions = nil;
     self.inputStreamRetryCounter = 0;
@@ -120,21 +132,25 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
 
 - (void)writeOutputStreamWithFileURL:(NSURL *)fileURL {
     dispatch_async(self.dispatchQueue, ^{
+        [self sdl_writeOutputStreamWithFileURL:fileURL];
+    });
+}
+
+- (void)sdl_writeOutputStreamWithFileURL:(NSURL *)fileURL {
     SDLLogV(@"Audio IO manager: Writing file to output stream. URL: %@", fileURL);
     
-    if (!self.sdlManager.streamManager.audioManager) {
-        SDLLogE(@"Audio IO manager: Error: The SDL audio manager does not exist. SDLManager: %@, Stream manager: %@, Audio manager: %@", self.sdlManager, self.sdlManager.streamManager, self.sdlManager.streamManager.audioManager);
-        return;
-    }
-    
-    if (self.sdlManager.streamManager.audioManager.delegate != self) {
-        SDLLogE(@"Audio IO manager: Error: The SDL audio manager delegate is not properly set. Expected delegate: %@, Current delegate: %@", self, self.sdlManager.streamManager.audioManager.delegate);
-        return;
-    }
-    
     // push the audio file to the underlying manager
-    [self.sdlManager.streamManager.audioManager pushWithFileURL:fileURL];
-    
+    NSBlockOperation *operation = [[NSBlockOperation alloc] init];
+    __weak NSBlockOperation *weakOperation = operation;
+    [operation addExecutionBlock:^{
+        if (!weakOperation || weakOperation.isCancelled) return;
+        
+        [self sdl_pushWithFileURL:fileURL];
+    }];
+
+    [self.operationQueue addOperation:operation];
+        
+    // if the output stream is stopped, the input stream could be started (or starting)
     if (self.outputStreamState == SDLAudioIOManagerStateStopped) {
         self.outputStreamState = SDLAudioIOManagerStateStarting;
 
@@ -155,7 +171,6 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     }
     
     [self sdl_startOutputStream];
-    });
 }
 
 - (void)sdl_startOutputStream {
@@ -168,7 +183,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
         }
         
         // the input stream is not in our way we can start the output stream
-        self.sdlManager.streamManager.audioManager.queue.suspended = NO;
+        self.operationQueue.suspended = NO;
     }
 }
 
@@ -178,7 +193,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     self.outputStreamState = SDLAudioIOManagerStateStopped;
     
     // suspend the output manager (so that new output can be added but is not immediately played)
-    self.sdlManager.streamManager.audioManager.queue.suspended = YES;
+    self.operationQueue.suspended = YES;
     
     if ([self.delegate respondsToSelector:@selector(audioManagerDidStopOutputStream:)]) {
         [self.delegate audioManagerDidStopOutputStream:self];
@@ -192,11 +207,11 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     }
 }
 
-- (void)sdl_continueOutputStream:(SDLAudioStreamManager * _Nonnull)audioManager {
+- (void)sdl_continueOutputStream {
     SDLLogV(@"Audio IO manager: %s", __FUNCTION__);
     dispatch_async(self.dispatchQueue, ^{
-    BOOL operationCountZero = audioManager.queue.operationCount == 0;
-    BOOL playbackEndInPast = [audioManager.audioPlaybackEnd compare:[NSDate date]] == NSOrderedAscending;
+    BOOL operationCountZero = self.operationQueue.operationCount == 0;
+    BOOL playbackEndInPast = [self.outputStreamPlaybackEnd compare:[NSDate date]] == NSOrderedAscending;
         
     if (operationCountZero && playbackEndInPast) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), self.dispatchQueue, ^{
@@ -206,27 +221,85 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     });
 }
 
-- (void)audioStreamManager:(SDLAudioStreamManager *)audioManager fileDidFinishPlaying:(NSURL *)fileURL successfully:(BOOL)successfully {
+#pragma mark- SDL write data area
+
+- (void)sdl_pushWithFileURL:(NSURL *)fileURL {
+    if (!self.sdlManager.streamManager.isAudioConnected) {
+        NSError *error = [NSError errorWithDomain:SDLErrorDomainAudioIOManager code:SDLAudioIOManagerErrorNotConnected userInfo:nil];
+        [self sdl_raiseErrorDidOccurForFile:fileURL error:error];
+        return;
+    }
+    
+    // Convert and store in the queue
+    NSError *error = nil;
+    SDLPCMAudioConverter *converter = [[SDLPCMAudioConverter alloc] initWithFileURL:fileURL];
+    NSURL *_Nullable outputFileURL = [converter convertFileWithError:&error];
+    UInt32 estimatedDuration = converter.estimatedDuration;
+
+    if (outputFileURL == nil) {
+        SDLLogE(@"Error converting file to CAF / PCM: %@", error);
+        [self sdl_raiseErrorDidOccurForFile:fileURL error:error];
+        return;
+    }
+
+    SDLAudioFile *audioFile = [[SDLAudioFile alloc] initWithInputFileURL:fileURL outputFileURL:outputFileURL estimatedDuration:estimatedDuration];
+    [self sdl_playAudioFile:audioFile];
+}
+
+- (void)sdl_playAudioFile:(SDLAudioFile *)audioFile {
+    // Strip the first bunch of bytes (because of how Apple outputs the data) and send to the audio stream, if we don't do this, it will make a weird click sound
+    NSData *data = audioFile.data;
+    NSData *audioData = [data subdataWithRange:NSMakeRange(5760, (data.length - 5760))];
+    
+    SDLLogD(@"Playing audio file: %@", audioFile);
+    BOOL success = [self.sdlManager.streamManager sendAudioData:audioData];
+    NSTimeInterval audioLengthSecs = (double)audioData.length / 32000.0;
+    
+    // delete the output data. not needed anymore
+    [[NSFileManager defaultManager] removeItemAtURL:audioFile.outputFileURL error:nil];
+    
+    // date1 is now + playback time (only correct if no playback is active)
+    NSDate *date1 = [NSDate dateWithTimeIntervalSinceNow:audioLengthSecs];
+    // date2 is last known playback endtime + playback time (only true if playback is currently active)
+    NSDate *date2 = [self.outputStreamPlaybackEnd dateByAddingTimeInterval:audioLengthSecs];
+    
+    // date1 > date2 if playback is not active
+    if ([date1 compare:date2] == NSOrderedDescending) {
+        SDLLogD(@"Adding first audio file to audio buffer");
+        // WORKARONUD: the first playback file finish notification should be a second ahead so the audio buffer doesn't run empty
+        self.outputStreamPlaybackEnd = [date1 dateByAddingTimeInterval:-1.0];
+    } else {
+        SDLLogD(@"Adding subsequent audio file to audio buffer");
+        self.outputStreamPlaybackEnd = date2;
+    }
+    
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(self.outputStreamPlaybackEnd.timeIntervalSinceNow * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        SDLLogD(@"Ending Audio file: %@", audioFile);
+        [self sdl_raiseFileDidFinishPlaying:audioFile.inputFileURL successfully:success];
+    });
+}
+
+- (void)sdl_raiseFileDidFinishPlaying:(NSURL *)fileURL successfully:(BOOL)successfully {
     dispatch_async(self.dispatchQueue, ^{
     if ([self.delegate respondsToSelector:@selector(audioManager:didFinishPlayingURL:)]) {
         [self.delegate audioManager:self didFinishPlayingURL:fileURL];
     }
     
-    [self sdl_continueOutputStream:audioManager];
+    [self sdl_continueOutputStream];
     });
 }
 
-- (void)audioStreamManager:(SDLAudioStreamManager *)audioManager errorDidOccurForFile:(NSURL *)fileURL error:(NSError *)error {
+- (void)sdl_raiseErrorDidOccurForFile:(NSURL *)fileURL error:(NSError *)error {
     dispatch_async(self.dispatchQueue, ^{
     if ([self.delegate respondsToSelector:@selector(audioManager:errorDidOccurForURL:error:)]) {
         [self.delegate audioManager:self errorDidOccurForURL:fileURL error:error];
     }
     
-    if ([error.domain isEqualToString:SDLErrorDomainAudioStreamManager] && error.code == SDLAudioStreamManagerErrorNotConnected) {
-        [audioManager.queue cancelAllOperations];
+    if ([error.domain isEqualToString:SDLErrorDomainAudioIOManager] && error.code == SDLAudioIOManagerErrorNotConnected) {
+        [self.operationQueue cancelAllOperations];
         [self sdl_stopOutputStream];
     } else {
-        [self sdl_continueOutputStream:audioManager];
+        [self sdl_continueOutputStream];
     }
     });
 }
@@ -347,9 +420,12 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     };
     
     // send the request out to the head unit
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     SDLLogV(@"Audio IO manager: Sending request %@", [performAudioInput serializeAsDictionary:0]);
     [self.sdlManager sendRequest:performAudioInput withResponseHandler:^(__kindof SDLRPCRequest * _Nullable request, __kindof SDLRPCResponse * _Nullable response, NSError * _Nullable error) {
         SDLLogV(@"Audio IO manager: Response received %@", [response serializeAsDictionary:0]);
+#pragma clang diagnostic pop
         
         if (error) {
             SDLLogW(@"Audio IO manager: Error in response %@", error);
