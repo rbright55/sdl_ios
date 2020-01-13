@@ -136,6 +136,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 @property (assign, nonatomic) BOOL showVideoBackgroundDisplay;
 
+@property (copy, nonatomic) NSString *backgroundString __deprecated_msg(("This property is deprecated and should not be used anymore."));
 
 - (instancetype)init NS_UNAVAILABLE;
 

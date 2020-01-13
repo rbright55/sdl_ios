@@ -337,6 +337,9 @@ NSString *const BackgroundTaskTransportName = @"com.sdl.transport.backgroundTask
     __weak typeof(self) weakSelf = self;
     [self sdl_sendRequest:regRequest
       withResponseHandler:^(__kindof SDLRPCRequest *_Nullable request, __kindof SDLRPCResponse *_Nullable response, NSError *_Nullable error) {
+        __strong typeof(self) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        
         // If the success BOOL is NO or we received an error at this point, we failed. Call the ready handler and transition to the DISCONNECTED state.
         if (error != nil || ![response.success boolValue]) {
             SDLLogE(@"Failed to register the app. Error: %@, Response: %@", error, response);

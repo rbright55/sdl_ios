@@ -394,13 +394,13 @@ int const CreateSessionRetries = 3;
 #pragma mark Retry Delay
 
 /**
- *  Generates a random number of seconds between 1.5 and 9.5 used to delay the retry control and data session attempts.
+ *  Generates a random number of seconds between 1.0 and 2.5 used to delay the retry control and data session attempts.
  *
  *  @return A random number of seconds.
  */
 - (double)sdl_retryDelay {
-    const double MinRetrySeconds = 1.5;
-    const double MaxRetrySeconds = 9.5;
+    const double MinRetrySeconds = 1.0;
+    const double MaxRetrySeconds = 2.5;
     double RetryRangeSeconds = MaxRetrySeconds - MinRetrySeconds;
 
     static double appDelaySeconds = 0;
