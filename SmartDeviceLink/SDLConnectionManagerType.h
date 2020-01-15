@@ -9,6 +9,7 @@
 #import "SDLNotificationConstants.h"
 #import <Foundation/Foundation.h>
 
+@class SDLNotificationDispatcher;
 @class SDLRPCRequest;
 @class SDLRPCMessage;
 @class SDLRegisterAppInterfaceResponse;
@@ -17,6 +18,11 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @protocol SDLConnectionManagerType <NSObject>
+
+/**
+ Returns the notification dispatcher of the connection manager. This dispatcher broadcasts all RPC requests, responses and notifications.
+ */
+- (SDLNotificationDispatcher *)notificationDispatcher;
 
 /**
  *  A special method on the connection manager which is used by managers that must bypass the default block on RPC sends before managers complete setup.

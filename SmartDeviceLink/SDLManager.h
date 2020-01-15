@@ -11,6 +11,7 @@
 @class SDLFileManager;
 @class SDLLifecycleConfiguration;
 @class SDLLockScreenConfiguration;
+@class SDLNotificationDispatcher;
 @class SDLPermissionManager;
 @class SDLProxy;
 @class SDLPutFile;
@@ -110,6 +111,8 @@ typedef void (^SDLManagerReadyBlock)(BOOL success, NSError *_Nullable error);
 */
 @property (strong, nonatomic, readonly, nullable) SDLProxy *proxy;
 #pragma clang diagnostic pop
+
+@property (strong, nonatomic, readonly) SDLNotificationDispatcher *notificationDispatcher;
 
 
 #pragma mark Lifecycle

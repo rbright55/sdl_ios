@@ -125,6 +125,10 @@ NS_ASSUME_NONNULL_BEGIN
 }
 #pragma clang diagnostic pop
 
+- (SDLNotificationDispatcher *)notificationDispatcher {
+    return self.lifecycleManager.notificationDispatcher;
+}
+
 
 #pragma mark SDLConnectionManager Protocol
 

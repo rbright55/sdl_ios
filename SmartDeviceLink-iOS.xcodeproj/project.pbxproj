@@ -8523,6 +8523,7 @@
 				MTL_ENABLE_DEBUG_INFO = YES;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
+				VALID_ARCHS = "arm64 arm64e";
 			};
 			name = Debug;
 		};
@@ -8572,6 +8573,7 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
 				SWIFT_VERSION = 5.0;
 				VALIDATE_PRODUCT = YES;
+				VALID_ARCHS = "arm64 arm64e";
 			};
 			name = Release;
 		};
