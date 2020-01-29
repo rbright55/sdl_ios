@@ -457,11 +457,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
             return;
         }
         
-        //TODO: Delayed Selector. Expectation fulfilled.
-        SDLLogDV(@"Reinitiate Delayed Abort call");
-        [NSObject cancelPreviousPerformRequestsWithTarget:strongSelf selector:@selector(sdl_abortInputStream) object:nil];
-        //TODO: Delayed Selector. Expecting a PerformAudioPassThruResponse or OnAudioPassThru
-        [self performSelector:@selector(sdl_abortInputStream) withObject:nil afterDelay:2];
+        [strongSelf sdl_initiateAbortInputStreamTimer];
         
         SDLLogDV(@"Receiving audio data (length %lu)", (unsigned long)audioData.length);
         
@@ -470,9 +466,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
         });
     };
     
-    //TODO: Delayed Selector. Expecting a PerformAudioPassThruResponse or OnAudioPassThru
-    SDLLogDV(@"Initiate Delayed Abort call");
-    [self performSelector:@selector(sdl_abortInputStream) withObject:nil afterDelay:2];
+    [self sdl_initiateAbortInputStreamTimer];
     
     // send the request out to the head unit
 #pragma clang diagnostic push
@@ -606,9 +600,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
             SDLLogDV(@"Input stream state is started. Change state to pausing and send request to end audio input");
             self.inputStreamState = SDLAudioIOManagerStatePausing;
             [self.sdlManager sendRequest:[[SDLEndAudioPassThru alloc] init]];
-            //TODO: Delayed Selector. Expecting a PerformAudioPassThruResponse
-            SDLLogDV(@"Initiate Delayed Abort call");
-            [self performSelector:@selector(sdl_abortInputStream) withObject:nil afterDelay:2];
+            [self sdl_initiateAbortInputStreamTimer];
             break;
         }
         default: {
@@ -628,9 +620,7 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
             SDLLogDV(@"Stopping input stream. Sending request to end audio input");
             self.inputStreamState = SDLAudioIOManagerStateStopping;
             [self.sdlManager sendRequest:[[SDLEndAudioPassThru alloc] init]];
-            //TODO: Delayed Selector. Expecting a PerformAudioPassThruResponse
-            SDLLogDV(@"Initiate Delayed Abort call");
-            [self performSelector:@selector(sdl_abortInputStream) withObject:nil afterDelay:2];
+            [self sdl_initiateAbortInputStreamTimer];
             break;
         }
         default: {
@@ -641,16 +631,21 @@ typedef NS_ENUM(NSInteger, SDLAudioIOManagerState) {
     }
 }
 
+- (void)sdl_initiateAbortInputStreamTimer {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        SDLLogDV(@"(re)initiate abort timer");
+        [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(sdl_abortInputStream) object:nil];
+        [self performSelector:@selector(sdl_abortInputStream) withObject:nil afterDelay:2];
+    });
+}
+
 - (BOOL)sdl_abortInputStream {
     SDLLogDV(@"Attempt to abort input stream from %@", [self nameForStreamState:self.inputStreamState]);
     
     switch (self.inputStreamState) {
-        case SDLAudioIOManagerStateStarting:
-        case SDLAudioIOManagerStatePausing:
-        case SDLAudioIOManagerStateStopping:
-            break;
-        default:
-            SDLLogW(@"Input stream can only aborted in state Starting or Stopping. Current state %@", [self nameForStreamState:self.inputStreamState]);
+        case SDLAudioIOManagerStateStarted:
+        case SDLAudioIOManagerStateStopped:
+            SDLLogW(@"Input stream abort not possible when Started or Stopped. Current state %@", [self nameForStreamState:self.inputStreamState]);
             return NO;
     }
     

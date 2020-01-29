@@ -202,7 +202,13 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     }
 
     // attempt to start streaming since we may already have necessary conditions met
-    [self sdl_startVideoSession];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+    if (self.isHmiStateVideoStreamCapable && self.videoStreamPermissionGranted) {
+        [self sdl_startVideoSession];
+    } else {
+        [self sdl_stopVideoSession];
+    }
+    });
 }
 
 - (void)stop {
@@ -677,7 +683,7 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     self.permissionItems = items;
     self.videoStreamPermissionGranted = touchPermissionGranted;
 
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
     if (self.isHmiStateVideoStreamCapable && self.videoStreamPermissionGranted) {
         [self sdl_startVideoSession];
     } else {
