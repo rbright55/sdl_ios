@@ -293,9 +293,7 @@ NSString *const BackgroundTaskTransportName = @"com.sdl.transport.backgroundTask
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) { return; }
 
-        SDLLogW(@"Skipping notification that the manager did disconnect");
-#warning SDLLogW(@"Skipping notification that the manager did disconnect");
-        //[strongSelf.delegate managerDidDisconnect];
+        [strongSelf.delegate managerDidDisconnect];
 
         if (shouldRestart) {
             [strongSelf sdl_transitionToState:SDLLifecycleStateStarted];

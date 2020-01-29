@@ -12,9 +12,6 @@
 #import "SDLLogMacros.h"
 #import "SDLStreamingMediaManagerConstants.h"
 
-#define SDLLogDV(msg, ...) SDLLogW(msg, ##__VA_ARGS__)
-#define SDLLogDD(msg, ...) SDLLogW(msg, ##__VA_ARGS__)
-
 NS_ASSUME_NONNULL_BEGIN
 
 @interface SDLLockScreenPresenter ()
@@ -64,14 +61,14 @@ NS_ASSUME_NONNULL_BEGIN
         [self sdl_presentWithCompletionHandler:^{
             if (self.shouldShowLockScreen) { return; }
 
-            SDLLogDV(@"The lockscreen has been presented but needs to be dismissed");
+            SDLLogV(@"The lockscreen has been presented but needs to be dismissed");
             [self sdl_dismissWithCompletionHandler:nil];
         }];
     } else {
         [self sdl_dismissWithCompletionHandler:^{
             if (!self.shouldShowLockScreen) { return; }
 
-            SDLLogDV(@"The lockscreen has been dismissed but needs to be presented");
+            SDLLogV(@"The lockscreen has been dismissed but needs to be presented");
             [self sdl_presentLockscreenWithCompletionHandler:nil];
         }];
     }
@@ -93,7 +90,7 @@ NS_ASSUME_NONNULL_BEGIN
     dispatch_async(dispatch_get_main_queue(), ^{
         if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) {
             // If the the `UIWindow` is created while the app is backgrounded and the app is using `SceneDelegate` class (iOS 13+), then the window will not be created correctly. Wait until the app is foregrounded before creating the window.
-            SDLLogDV(@"Application is backgrounded. The lockscreen will not be shown until the application is brought to the foreground.");
+            SDLLogV(@"Application is backgrounded. The lockscreen will not be shown until the application is brought to the foreground.");
             if (completionHandler == nil) { return; }
             return completionHandler();
         }
@@ -111,12 +108,12 @@ NS_ASSUME_NONNULL_BEGIN
         self.lockWindow.rootViewController = [[SDLLockScreenRootViewController alloc] init];
     }
 
-    SDLLogDD(@"Presenting the lockscreen window");
+    SDLLogD(@"Presenting the lockscreen window");
     [self.lockWindow makeKeyAndVisible];
 
     if (self.isPresentedOrPresenting) {
         // Call this right before attempting to present the view controller to make sure we are not already animating, otherwise the app may crash.
-        SDLLogDV(@"The lockscreen is already being presented");
+        SDLLogV(@"The lockscreen is already being presented");
         if (completionHandler == nil) { return; }
         return completionHandler();
     }
@@ -125,7 +122,7 @@ NS_ASSUME_NONNULL_BEGIN
     [[NSNotificationCenter defaultCenter] postNotificationName:SDLLockScreenManagerWillPresentLockScreenViewController object:nil];
 
     [self.lockWindow.rootViewController presentViewController:self.lockViewController animated:YES completion:^{
-        SDLLogDV(@"Presenting the lockscreen window completed");
+        SDLLogV(@"Presenting the lockscreen window completed");
         // Tell everyone we are done so video streaming can resume
         [[NSNotificationCenter defaultCenter] postNotificationName:SDLLockScreenManagerDidPresentLockScreenViewController object:nil];
 
@@ -149,7 +146,7 @@ NS_ASSUME_NONNULL_BEGIN
     __weak typeof(self) weakSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{
         if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) {
-            SDLLogDV(@"Application is backgrounded. The lockscreen will not be dismissed until the app is brought to the foreground.");
+            SDLLogV(@"Application is backgrounded. The lockscreen will not be dismissed until the app is brought to the foreground.");
             if (completionHandler == nil) { return; }
             return completionHandler();
         }
@@ -162,25 +159,25 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)sdl_dismissLockscreenWithCompletionHandler:(void (^ _Nullable)(void))completionHandler {
     if (self.isDismissing) {
         // Make sure we are not already animating, otherwise the app may crash
-        SDLLogDV(@"The lockscreen is already being dismissed");
+        SDLLogV(@"The lockscreen is already being dismissed");
         if (completionHandler == nil) { return; }
         return completionHandler();
     }
     
     if (self.lockViewController == nil) {
-        SDLLogDD(@"Attempt to dismiss the lock screen but there is no lock screen view controller to dismiss");
+        SDLLogD(@"Attempt to dismiss the lock screen but there is no lock screen view controller to dismiss");
         if (completionHandler == nil) { return; }
         return completionHandler();
     }
     
-    SDLLogDD(@"Dismissing the lockscreen window. Lock VC: %@, Presenting VC: %@, Presented VC: %@", self.lockViewController, self.lockViewController.presentingViewController, self.lockViewController.presentedViewController);
+    SDLLogD(@"Dismissing the lockscreen window. Lock VC: %@, Presenting VC: %@, Presented VC: %@", self.lockViewController, self.lockViewController.presentingViewController, self.lockViewController.presentedViewController);
 
     // Let ourselves know that the lockscreen will dismiss so we can pause video streaming for a few milliseconds - otherwise the animation to dismiss the lockscreen will be very janky.
     [[NSNotificationCenter defaultCenter] postNotificationName:SDLLockScreenManagerWillDismissLockScreenViewController object:nil];
     
     __weak typeof(self) weakSelf = self;
     [self.lockViewController dismissViewControllerAnimated:YES completion:^{
-        SDLLogDV(@"Dismissing the lockscreen window completed");
+        SDLLogV(@"Dismissing the lockscreen window completed");
         [weakSelf.lockWindow setHidden:YES];
 
         // Tell everyone we are done so video streaming can resume

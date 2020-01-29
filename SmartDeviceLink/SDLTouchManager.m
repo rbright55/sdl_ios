@@ -23,9 +23,6 @@
 #import "SDLTouchEvent.h"
 #import "SDLTouchManagerDelegate.h"
 
-#define SDLLogDV(msg, ...) SDLLogW(msg, ##__VA_ARGS__)
-#define SDLLogDD(msg, ...) SDLLogW(msg, ##__VA_ARGS__)
-
 NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSUInteger, SDLPerformingTouchType) {
@@ -139,7 +136,7 @@ static NSUInteger const MaximumNumberOfTouches = 2;
 }
 
 - (void)syncFrame {
-    SDLLogDV(@"TouchManager (%@).syncFrame", self);
+    SDLLogV(@"TouchManager (%@).syncFrame", self);
     if (!self.isTouchEnabled || (!self.touchEventHandler && !self.touchEventDelegate)) {
         SDLLogW(@"TouchManager (%@). Touch is not enabled or there is no touch event handler / delegate", self);
         return;
@@ -321,7 +318,7 @@ static NSUInteger const MaximumNumberOfTouches = 2;
  *  @param touch    Gesture information
  */
 - (void)sdl_handleTouchEnded:(SDLTouch *)touch {
-    SDLLogDV(@"TouchManager (%@). Handle Touch Ended", self);
+    SDLLogV(@"TouchManager (%@). Handle Touch Ended", self);
     switch (self.performingTouchType) {
         case SDLPerformingTouchTypeMultiTouch: {
             [self sdl_setMultiTouchFingerTouchForTouch:touch];
@@ -465,7 +462,7 @@ static NSUInteger const MaximumNumberOfTouches = 2;
  @param timer The timer that was fired
  */
 - (void)sdl_singleTapTimerCallback:(NSTimer *)timer {
-    SDLLogDV(@"TouchManager (%@). Single Tap Timer Callback", self);
+    SDLLogV(@"TouchManager (%@). Single Tap Timer Callback", self);
     CGPoint point = ((NSValue *)timer.userInfo[@"point"]).CGPointValue;
     self.singleTapTouch = nil;
     [self sdl_cancelSingleTapTimer];

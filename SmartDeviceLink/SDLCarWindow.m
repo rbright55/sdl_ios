@@ -23,10 +23,6 @@
 #import "SDLStreamingVideoScaleManager.h"
 #import "SDLStreamingMediaManagerConstants.h"
 
-#define SDLLogDV(msg, ...) SDLLogW(msg, ##__VA_ARGS__)
-#define SDLLogDD(msg, ...) SDLLogW(msg, ##__VA_ARGS__)
-
-
 NS_ASSUME_NONNULL_BEGIN
 
 @interface SDLCarWindow ()
@@ -67,7 +63,7 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 - (void)syncFrame {
-    SDLLogDV(@"CarWindow.syncFrame with view %@", self.rootViewController.view);
+    SDLLogV(@"CarWindow.syncFrame with view %@", self.rootViewController.view);
     
     if (!self.streamManager.isVideoConnected || self.streamManager.isVideoStreamingPaused) {
         SDLLogW(@"The stream manager seems to be not connected or paused");
@@ -75,13 +71,12 @@ NS_ASSUME_NONNULL_BEGIN
     }
 
     if (self.isLockScreenPresenting || self.isLockScreenDismissing) {
-        SDLLogDD(@"Paused CarWindow, lock screen moving");
+        SDLLogD(@"Paused CarWindow, lock screen moving");
         return;
     }
 
     CGRect bounds = self.rootViewController.view.bounds;
     UIGraphicsBeginImageContextWithOptions(bounds.size, YES, 1.0f);
-    NSTimeInterval start = NSDate.date.timeIntervalSince1970;
     switch (self.renderingType) {
         case SDLCarWindowRenderingTypeLayer: {
             [self.rootViewController.view.layer renderInContext:UIGraphicsGetCurrentContext()];
@@ -93,21 +88,15 @@ NS_ASSUME_NONNULL_BEGIN
             [self.rootViewController.view drawViewHierarchyInRect:bounds afterScreenUpdates:NO];
         } break;
     }
-    NSTimeInterval diff = NSDate.date.timeIntervalSince1970 - start;
-    SDLLogV(@"View capturing took %.000000f seconds", diff);
 
     UIImage *screenshot = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
-    
-    SDLLogDV(@"Screenshot created %@", screenshot);
 
     CGImageRef imageRef = screenshot.CGImage;
     CVPixelBufferRef pixelBuffer = [self.class sdl_pixelBufferForImageRef:imageRef usingPool:self.streamManager.pixelBufferPool];
     if (pixelBuffer != nil) {
         [self.streamManager sendVideoData:pixelBuffer];
         CVPixelBufferRelease(pixelBuffer);
-    } else {
-        SDLLogW(@"No pixelbuffer created from screenshot %@", screenshot);
     }
 }
 
@@ -134,7 +123,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)sdl_didReceiveVideoStreamStarted:(NSNotification *)notification {
     self.videoStreamStarted = true;
 
-    SDLLogDD(@"Video stream started");
+    SDLLogD(@"Video stream started");
 
     dispatch_async(dispatch_get_main_queue(), ^{
         [self sdl_applyDisplayDimensionsToRootViewController:self.rootViewController];
@@ -147,7 +136,7 @@ NS_ASSUME_NONNULL_BEGIN
     dispatch_async(dispatch_get_main_queue(), ^{
         // And also reset the streamingViewController's frame, because we are about to show it.
         self.rootViewController.view.frame = [UIScreen mainScreen].bounds;
-        SDLLogDD(@"Video stream ended, setting view controller frame back: %@", NSStringFromCGRect(self.rootViewController.view.frame));
+        SDLLogD(@"Video stream ended, setting view controller frame back: %@", NSStringFromCGRect(self.rootViewController.view.frame));
     });
 }
 
@@ -210,7 +199,7 @@ NS_ASSUME_NONNULL_BEGIN
     rootViewController.view.frame = self.streamManager.videoScaleManager.appViewportFrame;
     rootViewController.view.bounds = rootViewController.view.frame;
 
-    SDLLogDD(@"Setting CarWindow frame to: %@", NSStringFromCGRect(rootViewController.view.frame));
+    SDLLogD(@"Setting CarWindow frame to: %@", NSStringFromCGRect(rootViewController.view.frame));
 }
 
 #pragma mark Backgrounded Screen / Text
