@@ -1600,6 +1600,7 @@
 		E446809923C6054B00E10AF7 /* SDLAudioIOManager.h in Headers */ = {isa = PBXBuildFile; fileRef = E446809623C6054B00E10AF7 /* SDLAudioIOManager.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		E446809A23C6054B00E10AF7 /* SDLAudioIOManager.m in Sources */ = {isa = PBXBuildFile; fileRef = E446809723C6054B00E10AF7 /* SDLAudioIOManager.m */; };
 		E446809B23C6054B00E10AF7 /* SDLAudioIOManagerDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = E446809823C6054B00E10AF7 /* SDLAudioIOManagerDelegate.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		E4F960C323E0361800D7F2F9 /* testAudio.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = E4F960C223E0361800D7F2F9 /* testAudio.mp3 */; };
 		E9C32B911AB20BA200F283AF /* SDLIAPSession.h in Headers */ = {isa = PBXBuildFile; fileRef = E9C32B891AB20BA200F283AF /* SDLIAPSession.h */; };
 		E9C32B921AB20BA200F283AF /* SDLIAPSession.m in Sources */ = {isa = PBXBuildFile; fileRef = E9C32B8A1AB20BA200F283AF /* SDLIAPSession.m */; };
 		E9C32B961AB20BA200F283AF /* SDLTimer.h in Headers */ = {isa = PBXBuildFile; fileRef = E9C32B8E1AB20BA200F283AF /* SDLTimer.h */; };
@@ -3350,6 +3351,7 @@
 		E446809623C6054B00E10AF7 /* SDLAudioIOManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SDLAudioIOManager.h; path = SmartDeviceLink/SDLAudioIOManager.h; sourceTree = SOURCE_ROOT; };
 		E446809723C6054B00E10AF7 /* SDLAudioIOManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = SDLAudioIOManager.m; path = SmartDeviceLink/SDLAudioIOManager.m; sourceTree = SOURCE_ROOT; };
 		E446809823C6054B00E10AF7 /* SDLAudioIOManagerDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SDLAudioIOManagerDelegate.h; path = SmartDeviceLink/SDLAudioIOManagerDelegate.h; sourceTree = SOURCE_ROOT; };
+		E4F960C223E0361800D7F2F9 /* testAudio.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = testAudio.mp3; path = Assets/testAudio.mp3; sourceTree = "<group>"; };
 		E9C32B891AB20BA200F283AF /* SDLIAPSession.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SDLIAPSession.h; sourceTree = "<group>"; };
 		E9C32B8A1AB20BA200F283AF /* SDLIAPSession.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SDLIAPSession.m; sourceTree = "<group>"; };
 		E9C32B8E1AB20BA200F283AF /* SDLTimer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SDLTimer.h; sourceTree = "<group>"; };
@@ -5362,6 +5364,7 @@
 		5D61FA1E1A84237100846EE7 /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
+				E4F960C123E0360D00D7F2F9 /* Assets */,
 				5D61FA1F1A84237100846EE7 /* Info.plist */,
 			);
 			name = "Supporting Files";
@@ -6495,6 +6498,14 @@
 			name = Touches;
 			sourceTree = "<group>";
 		};
+		E4F960C123E0360D00D7F2F9 /* Assets */ = {
+			isa = PBXGroup;
+			children = (
+				E4F960C223E0361800D7F2F9 /* testAudio.mp3 */,
+			);
+			name = Assets;
+			sourceTree = "<group>";
+		};
 		E9C32B831AB20B2900F283AF /* @categories */ = {
 			isa = PBXGroup;
 			children = (
@@ -7276,6 +7287,7 @@
 				5D9FDA9A1F2A7D3F00A495C8 /* LICENSE in Resources */,
 				5D6F7A3E1BC811FC0070BF37 /* SDLAssets.xcassets in Resources */,
 				5D616B451D552F7A00553F6B /* SDLLockScreen.storyboard in Resources */,
+				E4F960C323E0361800D7F2F9 /* testAudio.mp3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

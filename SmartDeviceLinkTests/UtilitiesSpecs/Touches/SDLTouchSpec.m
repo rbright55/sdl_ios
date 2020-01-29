@@ -102,6 +102,30 @@ describe(@"SDLTouch Tests", ^{
             expect(@(touch.isSecondFinger)).to(beTruthy());
         });
     });
+         
+    context(@"For invalid touch data", ^{
+        __block SDLTouch* touch;
+        
+        beforeSuite(^{
+            SDLTouchCoord* coord = [[SDLTouchCoord alloc] init];
+            coord.x = @100;
+            coord.y = @200;
+            
+            SDLTouchEvent* touchEvent = [[SDLTouchEvent alloc] init];
+            touchEvent.touchEventId = @0;
+            touchEvent.coord = [NSArray arrayWithObject:coord];
+            touchEvent.timeStamp = [NSArray arrayWithObject:[NSNull null]];
+            
+            touch = [[SDLTouch alloc] initWithTouchEvent:touchEvent];
+        });
+        
+        it(@"should correctly make a SDLTouch struct", ^{
+            expect(@(touch.identifier)).to(equal(@(SDLTouchIdentifierFirstFinger)));
+            expect(@(touch.location.x)).to(equal(@100));
+            expect(@(touch.location.y)).to(equal(@200));
+            expect(@(touch.timeStamp)).toNot(beNil());
+        });
+    });
 });
 
 QuickSpecEnd

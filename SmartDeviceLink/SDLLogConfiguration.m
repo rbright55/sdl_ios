@@ -28,7 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
     _formatType = SDLLogFormatTypeDefault;
     _asynchronous = YES;
     _errorsAsynchronous = NO;
-    _disableAssertions = NO;
+    _disableAssertions = YES;
     _globalLogLevel = SDLLogLevelError;
 
     return self;

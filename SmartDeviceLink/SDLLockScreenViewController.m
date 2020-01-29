@@ -33,6 +33,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 @implementation SDLLockScreenViewController
 
+- (IBAction)lockScreenButtonPressed:(id)sender {
+    NSLog(@"Posting button press");
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"LockScreenButtonPressed" object:nil];
+}
+
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
 
