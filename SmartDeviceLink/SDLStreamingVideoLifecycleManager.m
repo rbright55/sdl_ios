@@ -51,6 +51,8 @@
 #import "SDLVideoStreamingCapability.h"
 #import "SDLVersion.h"
 
+#import "SDLSubscribeButton.h"
+
 #define SDLLogDV(msg, ...) SDLLogW(msg, ##__VA_ARGS__)
 #define SDLLogDD(msg, ...) SDLLogW(msg, ##__VA_ARGS__)
 
@@ -626,7 +628,7 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
         NSString *make = registerResponse.vehicleType.make;
         CGSize resolution = self.videoScaleManager.displayViewportResolution;
         if (([make containsString:@"Ford"] || [make containsString:@"Lincoln"]) && (resolution.width > 800 || resolution.height > 800)) {
-            self.videoScaleManager.scale = 1.0f / 0.75f; // the best scaling from 800 to 600 is a value of 1.333333333333 and the best way to get the most accurate number is to use 1/.75
+            self.videoScaleManager.scale = 4.f / 3.f; // the best scaling from 800 to 600 is a value of 1.333333333333 mashing 4 pixels into 3.
         }
     }
 
@@ -655,6 +657,11 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
 
     // if startWithProtocol has not been called yet, abort here
     if (!self.protocol) { return; }
+    
+    SDLSubscribeButton *subscribe = [[SDLSubscribeButton alloc] initWithButtonName:SDLButtonNameSearch handler:^(SDLOnButtonPress * _Nullable buttonPress, SDLOnButtonEvent * _Nullable buttonEvent) {
+        
+    }];
+    [self.connectionManager sendConnectionRPC:subscribe];
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
     if (self.isHmiStateVideoStreamCapable && self.videoStreamPermissionGranted) {

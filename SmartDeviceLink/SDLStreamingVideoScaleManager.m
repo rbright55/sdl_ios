@@ -21,6 +21,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (assign, nonatomic, readwrite) CGRect appViewportFrame;
 
+@property (assign, nonatomic) CGFloat tempWidth;
+
 @end
 
 @implementation SDLStreamingVideoScaleManager
@@ -45,8 +47,23 @@ CGSize const SDLDefaultDisplayViewportResolution = {0, 0};
 
     _scale = [self.class validateScale:scale];
     _displayViewportResolution = displayViewportResolution;
+    _tempWidth = 1920;
 
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(testToggleResolution) name:@"LockScreenButtonPressed" object:nil];
+    
     return self;
+}
+
+- (void)setDisplayViewportResolution:(CGSize)displayViewportResolution {
+    if (CGSizeEqualToSize(SDLDefaultDisplayViewportResolution, _displayViewportResolution)) {
+        _displayViewportResolution = displayViewportResolution;
+    }
+}
+
+- (void)testToggleResolution {
+    CGFloat temp = _displayViewportResolution.width;
+    _displayViewportResolution.width = _tempWidth;
+    _tempWidth = temp;
 }
 
 - (SDLOnTouchEvent *)scaleTouchEventCoordinates:(SDLOnTouchEvent *)onTouchEvent {
