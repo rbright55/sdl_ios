@@ -47,23 +47,23 @@ CGSize const SDLDefaultDisplayViewportResolution = {0, 0};
 
     _scale = [self.class validateScale:scale];
     _displayViewportResolution = displayViewportResolution;
-    _tempWidth = 1920;
+    _tempWidth = 0;
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(testToggleResolution) name:@"LockScreenButtonPressed" object:nil];
     
     return self;
 }
 
-- (void)setDisplayViewportResolution:(CGSize)displayViewportResolution {
-    if (CGSizeEqualToSize(SDLDefaultDisplayViewportResolution, _displayViewportResolution)) {
-        _displayViewportResolution = displayViewportResolution;
+- (CGSize)displayViewportResolution {
+    if (_tempWidth == 0) {
+        return _displayViewportResolution;
+    } else {
+        return CGSizeMake(_tempWidth, _displayViewportResolution.height);
     }
 }
 
 - (void)testToggleResolution {
-    CGFloat temp = _displayViewportResolution.width;
-    _displayViewportResolution.width = _tempWidth;
-    _tempWidth = temp;
+    _tempWidth = _tempWidth == 0.0 ? 1920.0 : 0;
 }
 
 - (SDLOnTouchEvent *)scaleTouchEventCoordinates:(SDLOnTouchEvent *)onTouchEvent {
