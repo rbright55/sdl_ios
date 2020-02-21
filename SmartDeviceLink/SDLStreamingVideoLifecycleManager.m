@@ -661,7 +661,7 @@ typedef void(^SDLVideoCapabilityResponseHandler)(SDLVideoStreamingCapability *_N
     SDLSubscribeButton *subscribe = [[SDLSubscribeButton alloc] initWithButtonName:SDLButtonNameSearch handler:^(SDLOnButtonPress * _Nullable buttonPress, SDLOnButtonEvent * _Nullable buttonEvent) {
         
     }];
-    [self.connectionManager sendConnectionRPC:subscribe];
+    [self.connectionManager sendConnectionRequest:subscribe withResponseHandler:nil];
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
     if (self.isHmiStateVideoStreamCapable && self.videoStreamPermissionGranted) {

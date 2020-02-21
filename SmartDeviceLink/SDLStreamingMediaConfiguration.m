@@ -94,6 +94,10 @@ NS_ASSUME_NONNULL_BEGIN
     return [[self alloc] initWithEncryptionFlag:SDLStreamingEncryptionFlagAuthenticateAndEncrypt videoSettings:nil dataSource:nil rootViewController:initialViewController];
 }
 
+- (nullable NSArray<Class<SDLSecurityType>> *)securityManagers {
+    return nil;
+}
+
 #pragma mark NSCopying
 
 - (id)copyWithZone:(nullable NSZone *)zone {
