@@ -86,7 +86,7 @@ NS_ASSUME_NONNULL_BEGIN
         _messageRouter.delegate = self;
         _encryptionLifecycleManager = encryptionLifecycleManager;
     }
-    
+
     return self;
 }
 
@@ -275,7 +275,7 @@ NS_ASSUME_NONNULL_BEGIN
     if (!message.isPayloadProtected && [self.encryptionLifecycleManager rpcRequiresEncryption:message]) {
         message.payloadProtected = YES;
     }
-    
+
     if (message.isPayloadProtected && !self.encryptionLifecycleManager.isEncryptionReady) {
         SDLLogW(@"Encryption Manager not ready, request not sent (%@)", message);
         return;
@@ -291,7 +291,7 @@ NS_ASSUME_NONNULL_BEGIN
     if (error != nil) {
         SDLLogW(@"Error encoding JSON data: %@", *error);
     }
-    
+
     NSData *messagePayload = nil;
     SDLLogV(@"Send RPC %@", message);
 
@@ -331,9 +331,9 @@ NS_ASSUME_NONNULL_BEGIN
             // TODO: (Joel F.)[2016-02-09] We should assert if the service isn't setup for encryption. See [#350](https://github.com/smartdevicelink/sdl_ios/issues/350)
             if (encryption) {
                 NSError *encryptError = nil;
-                
+
                 messagePayload = [self.securityManager encryptData:rpcPayload.data withError:&encryptError];
-                
+
                 if (encryptError) {
                     SDLLogE(@"Error encrypting request! %@", encryptError);
                 }
@@ -344,7 +344,7 @@ NS_ASSUME_NONNULL_BEGIN
             if (!messagePayload) {
                 return NO;
             }
-            
+
         } break;
         default: {
             NSAssert(NO, @"Attempting to send an RPC based on an unknown version number: %@, message: %@", @([SDLGlobals sharedGlobals].protocolVersion.major), message);
@@ -728,7 +728,7 @@ NS_ASSUME_NONNULL_BEGIN
     // If the handshake went bad and the security library ain't happy, send over the failure to the module. This should result in an ACK with encryption off.
     SDLProtocolMessage *serverSecurityMessage = nil;
     if (serverHandshakeData == nil) {
-        SDLLogE(@"Error running TLS handshake procedure. Sending error to module. Error: %@", handshakeError);
+        SDLLogE(@"Error running TLS handshake procedure. Sending error to module. Error: %@, %@", handshakeError, [[NSString alloc] initWithData:clientHandshakeData encoding:NSUTF8StringEncoding]);
 
         serverSecurityMessage = [self.class sdl_serverSecurityFailedMessageWithClientMessageHeader:clientHandshakeMessage.header messageId:++_messageID];
     } else {

@@ -138,16 +138,9 @@ NS_ASSUME_NONNULL_BEGIN
         // Let ourselves know that the lockscreen will present so we can pause video streaming for a few milliseconds - otherwise the animation to show the lockscreen will be very janky.
         [[NSNotificationCenter defaultCenter] postNotificationName:SDLLockScreenManagerWillPresentLockScreenViewController object:nil];
 
-<<<<<<< HEAD
-    [self.lockWindow.rootViewController presentViewController:self.lockViewController animated:YES completion:^{
-        SDLLogV(@"Presenting the lockscreen window completed");
-        // Tell everyone we are done so video streaming can resume
-        [[NSNotificationCenter defaultCenter] postNotificationName:SDLLockScreenManagerDidPresentLockScreenViewController object:nil];
-=======
         [strongself.lockWindow.rootViewController presentViewController:strongself.lockViewController animated:YES completion:^{
             // Tell everyone we are done so video streaming can resume
             [[NSNotificationCenter defaultCenter] postNotificationName:SDLLockScreenManagerDidPresentLockScreenViewController object:nil];
->>>>>>> 6.6.0
 
             if (completionHandler == nil) { return; }
             return completionHandler();
@@ -187,30 +180,15 @@ NS_ASSUME_NONNULL_BEGIN
         if (completionHandler == nil) { return; }
         return completionHandler(NO);
     }
-    
+
     if (self.lockViewController.presentingViewController == nil) {
         SDLLogW(@"Attempted to dismiss lockscreen, but lockViewController is not presented");
         if (completionHandler == nil) { return; }
         return completionHandler(NO);
     }
-    
-    if (self.lockViewController == nil) {
-        SDLLogD(@"Attempt to dismiss the lock screen but there is no lock screen view controller to dismiss");
-        if (completionHandler == nil) { return; }
-        return completionHandler();
-    }
-    
-    SDLLogD(@"Dismissing the lockscreen window. Lock VC: %@, Presenting VC: %@, Presented VC: %@", self.lockViewController, self.lockViewController.presentingViewController, self.lockViewController.presentedViewController);
 
     // Let ourselves know that the lockscreen will dismiss so we can pause video streaming for a few milliseconds - otherwise the animation to dismiss the lockscreen will be very janky.
     [[NSNotificationCenter defaultCenter] postNotificationName:SDLLockScreenManagerWillDismissLockScreenViewController object:nil];
-<<<<<<< HEAD
-    
-    __weak typeof(self) weakSelf = self;
-    [self.lockViewController dismissViewControllerAnimated:YES completion:^{
-        SDLLogV(@"Dismissing the lockscreen window completed");
-        [weakSelf.lockWindow setHidden:YES];
-=======
 
     SDLLogD(@"Dismissing the lockscreen window");
     _isDismissing = YES;
@@ -220,7 +198,6 @@ NS_ASSUME_NONNULL_BEGIN
         __strong typeof(self) strongSelf = weakSelf;
         strongSelf->_isDismissing = NO;
         [strongSelf.lockWindow setHidden:YES];
->>>>>>> 6.6.0
 
         // Tell everyone we are done so video streaming can resume
         [[NSNotificationCenter defaultCenter] postNotificationName:SDLLockScreenManagerDidDismissLockScreenViewController object:nil];

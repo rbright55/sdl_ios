@@ -98,13 +98,6 @@
 }
 
 + (SDLLogFileModule *)sdl_streamingMediaManagerModule {
-<<<<<<< HEAD
-    return [SDLLogFileModule moduleWithName:@"Streaming/Video" files:[NSSet setWithArray:@[@"SDLH264VideoEncoder", @"SDLRAWH264Packetizer", @"SDLRTPH264Packetizer", @"SDLStreamingMediaManager", @"SDLStreamingAudioLifecycleManager", @"SDLStreamingVideoLifecycleManager", @"SDLTouchManager", @"SDLCarWindow"]]];
-}
-
-+ (SDLLogFileModule *)sdl_streamingMediaAudioTranscoderModule {
-    return [SDLLogFileModule moduleWithName:@"Streaming/Audio" files:[NSSet setWithArray:@[@"SDLAudioIOManager", @"SDLAudioStreamManager", @"SDLPCMAudioConverter"]]];
-=======
     return [SDLLogFileModule moduleWithName:@"Audio and Video Streaming" files:[NSSet setWithArray:@[@"SDLStreamingMediaManager"]]];
 }
 
@@ -122,7 +115,6 @@
 
 + (SDLLogFileModule *)sdl_audioStreamingMediaTranscoderModule {
     return [SDLLogFileModule moduleWithName:@"Audio Streaming/Transcoding" files:[NSSet setWithArray:@[@"SDLAudioStreamManager", @"SDLPCMAudioConverter"]]];
->>>>>>> 6.6.0
 }
 
 + (SDLLogFileModule *)sdl_screenManagerModule {
